@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mapa de solicitudes{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="d-flex align-items-baseline justify-content-between mb-1">
+  <h1 class="h3 mb-0">Solicitudes cerca de ti</h1>
+  <span class="text-muted">{{ solicitudes|length }} visible{{ solicitudes|length|pluralize:"s" }}</span>
+</div>
+<p class="text-muted">Solo pendientes visibles de tus especialidades (o dirigidas a ti). Acéptala si te va.</p>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div id="avisoUbicacion" class="alert alert-info" role="note" hidden>
+  Tu perfil aún no tiene ubicación: el mapa usa Bogotá como referencia. Márcala en tu perfil.
+</div>
+<div id="mapa" class="fx-map mb-3" role="region" aria-label="Mapa de solicitudes"></div>
+
+<div class="d-grid gap-3" id="lista">
+  {% for s in solicitudes %}
+  <article class="fx-card" data-id="{{ s.id }}" id="sol-{{ s.id }}">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <h2 class="h6 fw-bold mb-1">#{{ s.id }} · {{ s.categoria }}</h2>
+      {% if s.dirigida %}<span class="fx-badge fx-badge--pendiente">Dirigida a ti</span>
+      {% elif s.urgencia == "Urgente" %}<span class="fx-badge">Urgente</span>{% endif %}
+    </div>
+    <p class="mb-1">{{ s.descripcion }}</p>
+    <div class="small text-muted">
+      <i class="bi bi-person"></i> {{ s.cliente }}
+      <span class="mx-1">|</span><i class="bi bi-geo-alt"></i> {{ s.direccion }}
+      <span class="mx-1">|</span><i class="bi bi-cash-coin"></i> Ofrece: {{ s.precio_txt }}
+      {% if s.km != None %}<span class="mx-1">|</span><i class="bi bi-signpost-2"></i> {{ s.km }} km{% endif %}
+    </div>
+    <div class="mt-2 d-flex gap-2">
+      <form method="post" action="{% url 'tecnico_aceptar' s.id %}" class="d-inline">
+        {% csrf_token %}
+        <button class="btn btn-fx btn-sm" type="submit">Aceptar</button>
+      </form>
+      <form method="post" action="{% url 'tecnico_rechazar' s.id %}" class="d-inline">
+        {% csrf_token %}
+        <button class="btn btn-line btn-sm" type="submit">Rechazar</button>
+      </form>
+    </div>
+  </article>
+  {% empty %}
+  <div class="fx-card fx-empty">
+    <i class="bi bi-map"></i>
+    <h3>No hay solicitudes visibles</h3>
+    <p class="text-muted mb-0">Cuando un cliente publique en tus especialidades, aparecerá aquí.</p>
+  </div>
+  {% endfor %}
+</div>
+
+{{ solicitudes|json_script:"solicitudes-data" }}
+{{ yo_pos|json_script:"yo-pos" }}
+{{ mapa_fallback|json_script:"mapa-fallback" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(() => {
+  const sols = JSON.parse(document.getElementById("solicitudes-data").textContent);
+  const yo = JSON.parse(document.getElementById("yo-pos").textContent);
+  const esFallback = JSON.parse(document.getElementById("mapa-fallback").textContent);
+  if (esFallback) document.getElementById("avisoUbicacion").hidden = false;
+  const conCoords = sols.filter((s) => s.lat != null && s.lng != null);
+
+  const mapa = L.map("mapa").setView([yo.lat, yo.lng], 13);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    referrerPolicy: "strict-origin-when-cross-origin",
+    attribution: "&copy; OpenStreetMap",
+  }).addTo(mapa);
+
+  L.marker([yo.lat, yo.lng], {
+    icon: L.divIcon({ className: "", html: '<div class="fx-pin fx-pin--yo"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
+    zIndexOffset: 1000,
+  }).addTo(mapa).bindTooltip("Tú estás aquí");
+
+  const pin = L.divIcon({ className: "", html: '<div class="fx-pin"><i class="bi bi-person-fill"></i></div>', iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -34] });
+  conCoords.forEach((s) => {
+    const dist = s.km != null ? `${String(s.km).replace(".", ",")} km` : "distancia n/d";
+    L.marker([s.lat, s.lng], { icon: pin }).bindPopup(
+      `<strong>#${s.id} · ${s.categoria}</strong><br>${s.cliente}<br>${s.descripcion}<br>` +
+      `Ofrece: ${s.precio_txt} · ${dist}<br>` +
+      `<a class="btn btn-fx btn-sm mt-2" href="#sol-${s.id}" data-resaltar="${s.id}">Ver solicitud abajo</a>`,
+    ).addTo(mapa);
+  });
+  if (conCoords.length) {
+    mapa.fitBounds(L.latLngBounds([[yo.lat, yo.lng], ...conCoords.map((s) => [s.lat, s.lng])]).pad(0.2));
+  }
+
+  // Resalta la tarjeta clickeada en el popup (con muchas solicitudes,
+  // el #ancla solo no basta para ubicarla).
+  const resaltar = () => {
+    document.querySelectorAll(".fx-flash").forEach((c) => c.classList.remove("fx-flash"));
+    const id = (window.location.hash || "").replace("#sol-", "");
+    if (!id) return;
+    const card = document.getElementById(`sol-${id}`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("fx-flash");
+    setTimeout(() => card.classList.remove("fx-flash"), 4000);
+  };
+  window.addEventListener("hashchange", resaltar);
+  resaltar();
+})();
+</script>
+{% endblock %}

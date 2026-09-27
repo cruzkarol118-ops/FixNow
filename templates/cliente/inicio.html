@@ -2,10 +2,19 @@
 {% load static %}
 {% block title %}Inicio{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Hola, {{ cliente.nombre|truncatewords:1 }}</h1>
+<h1 class="h3 mb-3">Hola, {{ cliente.nombre_completo|truncatewords:1 }}</h1>
 
 <a class="fx-search" href="{% url 'solicitud_nueva' %}">
   <i class="bi bi-search"></i><span>¿Qué se te dañó hoy?</span>
+</a>
+
+<a class="fx-card d-flex align-items-center gap-3 text-decoration-none text-reset mt-3" href="{% url 'solicitud_nueva' %}?enfocar=1">
+  <div class="fx-cat__icon m-0" style="width:52px;height:52px;border-radius:16px;font-size:1.3rem"><i class="bi bi-stars"></i></div>
+  <div class="flex-grow-1" style="min-width:0">
+    <div class="fw-bold">¿No sabes qué categoría es?</div>
+    <div class="text-muted small text-truncate">Descríbelo con tus palabras y te sugerimos a dónde va.</div>
+  </div>
+  <i class="bi bi-chevron-right text-muted"></i>
 </a>
 
 <div class="fx-section-title"><h2>Elige una categoría</h2></div>
@@ -17,24 +26,32 @@
   {% endfor %}
 </div>
 
-{% if en_curso %}
-<div class="fx-section-title"><h2>Tu solicitud en curso</h2></div>
-<a class="fx-card d-flex align-items-center gap-3 text-decoration-none text-reset" href="{% url 'cliente_historial' %}">
-  <div class="fx-cat__icon m-0" style="width:52px;height:52px;border-radius:16px;font-size:1.3rem"><i class="bi {{ en_curso.icono }}"></i></div>
-  <div class="flex-grow-1" style="min-width:0">
-    <div class="fw-bold">{{ en_curso.categoria }} con {{ en_curso.tecnico }}</div>
-    <div class="text-muted small text-truncate">{{ en_curso.descripcion }}</div>
-  </div>
-  {% include "partials/estado.html" with estado=en_curso.estado %}
-</a>
+{% if activas %}
+<div class="fx-section-title"><h2>Tus solicitudes activas</h2><a href="{% url 'cliente_historial' %}">Ver todas</a></div>
+<div class="d-grid gap-2">
+  {% for s in activas %}
+  <a class="fx-card d-flex align-items-center gap-3 text-decoration-none text-reset" href="{% url 'cliente_historial' %}">
+    <div class="fx-cat__icon m-0" style="width:52px;height:52px;border-radius:16px;font-size:1.3rem"><i class="bi {{ s.icono }}"></i></div>
+    <div class="flex-grow-1" style="min-width:0">
+      <div class="fw-bold">#{{ s.pk }} · {{ s.categoria }} con {{ s.tecnico }}</div>
+      <div class="text-muted small text-truncate">{{ s.descripcion }}</div>
+    </div>
+    {% include "partials/estado.html" with estado=s.estado %}
+  </a>
+  {% endfor %}
+</div>
 {% endif %}
 
 <div class="fx-section-title">
   <h2>Técnicos cerca de ti</h2>
   <a href="{% url 'tecnicos' %}">Ver todos</a>
 </div>
-<div class="fx-scroller">
-  {% for t in tecnicos %}{% include "partials/tarjeta_tecnico.html" %}{% endfor %}
+<div class="fx-carrusel">
+  <button type="button" class="fx-carrusel__btn" data-carrusel-prev aria-label="Anterior">‹</button>
+  <div class="fx-scroller" data-carrusel>
+    {% for t in tecnicos %}{% include "partials/tarjeta_tecnico.html" %}{% endfor %}
+  </div>
+  <button type="button" class="fx-carrusel__btn" data-carrusel-next aria-label="Siguiente">›</button>
 </div>
 
 {# Modal de confirmación reutilizado por las tarjetas (FN-4) #}

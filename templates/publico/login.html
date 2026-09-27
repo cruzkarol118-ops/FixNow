@@ -5,11 +5,15 @@
   <h1>Ingresa a FixNow</h1>
   <p class="text-muted">Usa el correo con el que te registraste.</p>
 
+  {% if error %}
+  <div class="alert alert-danger" role="alert">{{ error }}</div>
+  {% endif %}
+
   <form method="post" class="fx-card needs-validation" novalidate>
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label" for="correo">Correo electrónico</label>
-      <input class="form-control" type="email" id="correo" name="correo" autocomplete="email" required>
+      <input class="form-control" type="email" id="correo" name="correo" autocomplete="email" value="{{ correo|default:'' }}" required>
       <div class="invalid-feedback">Escribe un correo válido.</div>
     </div>
     <div class="mb-4">
@@ -17,21 +21,10 @@
       <input class="form-control" type="password" id="clave" name="clave" autocomplete="current-password" required>
       <div class="invalid-feedback">Escribe tu contraseña.</div>
     </div>
-    <button class="btn btn-fx btn-lg w-100" type="submit" name="rol_demo" value="cliente">Ingresar</button>
+    <button class="btn btn-fx btn-lg w-100" type="submit">Ingresar</button>
     <p class="text-center mt-3 mb-0"><a href="#" data-pronto>¿Olvidaste tu contraseña?</a></p>
   </form>
 
   <p class="text-center mt-3">¿Aún no tienes cuenta? <a href="{% url 'registro_cliente' %}">Crear cuenta</a></p>
-
-  {# ===== DEMO: borrar este bloque cuando exista el login real ===== #}
-  <form method="post" class="fx-demo">
-    {% csrf_token %}
-    <p class="small fw-bold mb-2">Modo demo (solo para recorrer las pantallas)</p>
-    <div class="d-flex flex-wrap gap-2">
-      <button class="btn btn-line btn-sm" name="rol_demo" value="cliente">Entrar como cliente</button>
-      <button class="btn btn-line btn-sm" name="rol_demo" value="tecnico">Entrar como técnico</button>
-      <button class="btn btn-line btn-sm" name="rol_demo" value="admin">Entrar como admin</button>
-    </div>
-  </form>
 </div>
 {% endblock %}

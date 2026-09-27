@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Desactivar mi cuenta{% endblock %}
+{% block content %}
+<div class="fx-auth">
+  <h1>Desactivar mi cuenta</h1>
+  <p class="text-muted">Esto cierra tu sesión y bloquea tu entrada. Tus datos e historial se conservan y un
+  administrador puede reactivarte si lo pides. Si eres técnico, además quedas invisible en búsquedas.</p>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">
+    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" class="fx-card needs-validation" novalidate>
+    {% csrf_token %}
+    <div class="mb-4">
+      <label class="form-label" for="conf_clave">Confirma con tu contraseña</label>
+      {{ form.password }}
+      {% for error in form.password.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <button class="btn btn-danger-soft btn-lg w-100" type="submit"
+            onclick="return confirm('¿Seguro? Se cerrará tu sesión de inmediato.');">Desactivar mi cuenta</button>
+    <p class="text-center mt-3 mb-0"><a href="{% url 'landing' %}">Mejor no, volver</a></p>
+  </form>
+</div>
+{% endblock %}

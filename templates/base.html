@@ -20,8 +20,17 @@
   {% url 'cliente_inicio' as u_cli_inicio %}
   {% url 'tecnicos' as u_tecnicos %}
   {% url 'cliente_historial' as u_cli_hist %}
+  {% url 'cliente_perfil' as u_cli_perf %}
   {% url 'tecnico_solicitudes' as u_tec_sol %}
+  {% url 'tecnico_historial' as u_tec_hist %}
+  {% url 'tecnico_perfil' as u_tec_perf %}
+  {% url 'tecnico_mapa' as u_tec_mapa %}
+  {% url 'notificaciones' as u_notif %}
   {% url 'admin_tecnicos' as u_adm_tec %}
+  {% url 'admin_usuarios' as u_adm_usr %}
+  {% url 'admin_reportes' as u_adm_rep %}
+  {% url 'admin_resenas' as u_adm_res %}
+  {% url 'admin_ia' as u_adm_ia %}
 
   <header class="fx-header">
     <div class="fx-header__inner">
@@ -37,19 +46,22 @@
           <a class="fx-nav__item {% if request.path == u_cli_inicio %}is-active{% endif %}" href="{{ u_cli_inicio }}"><i class="bi bi-house-door-fill"></i><span>Inicio</span></a>
           <a class="fx-nav__item {% if request.path == u_tecnicos %}is-active{% endif %}" href="{{ u_tecnicos }}"><i class="bi bi-geo-alt-fill"></i><span>Técnicos</span></a>
           <a class="fx-nav__item {% if request.path == u_cli_hist %}is-active{% endif %}" href="{{ u_cli_hist }}"><i class="bi bi-receipt"></i><span>Solicitudes</span></a>
-          <a class="fx-nav__item" href="#" data-pronto><i class="bi bi-person-circle"></i><span>Perfil</span></a>
+          <a class="fx-nav__item {% if request.path == u_cli_perf %}is-active{% endif %}" href="{{ u_cli_perf }}"><i class="bi bi-person-circle"></i><span>Perfil</span></a>
         </nav>
       {% elif rol == 'tecnico' %}
         <nav class="fx-nav" aria-label="Principal">
           <a class="fx-nav__item {% if request.path == u_tec_sol %}is-active{% endif %}" href="{{ u_tec_sol }}"><i class="bi bi-inbox-fill"></i><span>Solicitudes</span></a>
-          <a class="fx-nav__item" href="#" data-pronto><i class="bi bi-clock-history"></i><span>Historial</span></a>
-          <a class="fx-nav__item" href="#" data-pronto><i class="bi bi-person-circle"></i><span>Perfil</span></a>
+          <a class="fx-nav__item {% if request.path == u_tec_mapa %}is-active{% endif %}" href="{{ u_tec_mapa }}"><i class="bi bi-map-fill"></i><span>Mapa</span></a>
+          <a class="fx-nav__item {% if request.path == u_tec_hist %}is-active{% endif %}" href="{{ u_tec_hist }}"><i class="bi bi-clock-history"></i><span>Historial</span></a>
+          <a class="fx-nav__item {% if request.path == u_tec_perf %}is-active{% endif %}" href="{{ u_tec_perf }}"><i class="bi bi-person-circle"></i><span>Perfil</span></a>
         </nav>
       {% elif rol == 'admin' %}
         <nav class="fx-nav" aria-label="Principal">
           <a class="fx-nav__item {% if request.path == u_adm_tec %}is-active{% endif %}" href="{{ u_adm_tec }}"><i class="bi bi-patch-check-fill"></i><span>Aprobaciones</span></a>
-          <a class="fx-nav__item" href="#" data-pronto><i class="bi bi-people-fill"></i><span>Usuarios</span></a>
-          <a class="fx-nav__item" href="#" data-pronto><i class="bi bi-bar-chart-fill"></i><span>Reportes</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_usr %}is-active{% endif %}" href="{{ u_adm_usr }}"><i class="bi bi-people-fill"></i><span>Usuarios</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_rep %}is-active{% endif %}" href="{{ u_adm_rep }}"><i class="bi bi-bar-chart-fill"></i><span>Reportes</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_res %}is-active{% endif %}" href="{{ u_adm_res }}"><i class="bi bi-chat-quote-fill"></i><span>Reseñas</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_ia %}is-active{% endif %}" href="{{ u_adm_ia }}"><i class="bi bi-stars"></i><span>IA</span></a>
         </nav>
       {% endif %}
 
@@ -58,10 +70,16 @@
           <a class="btn btn-line btn-sm" href="{% url 'login' %}">Ingresar</a>
           <a class="btn btn-fx btn-sm d-none d-sm-inline-block" href="{% url 'registro_cliente' %}">Crear cuenta</a>
         {% else %}
-          <a class="fx-bell" href="#" data-pronto aria-label="Notificaciones: {{ n_notif }} sin leer">
+          <a class="fx-bell" href="{{ u_notif }}" aria-label="Notificaciones: {{ n_notif }} sin leer">
             <i class="bi bi-bell-fill"></i>
             {% if n_notif %}<span class="fx-bell__dot">{{ n_notif }}</span>{% endif %}
           </a>
+          <form method="post" action="{% url 'logout' %}" class="fx-logout">
+            {% csrf_token %}
+            <button class="fx-logout__btn" type="submit" title="Cerrar sesión">
+              <i class="bi bi-box-arrow-right"></i><span>Salir</span>
+            </button>
+          </form>
         {% endif %}
       </div>
     </div>
@@ -82,7 +100,10 @@
 
   <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 2000; margin-top: env(safe-area-inset-top, 0px);">
     <div id="fx-toast" class="toast fx-toast align-items-center" role="status" aria-live="polite" aria-atomic="true">
-      <div class="toast-body"></div>
+      <div class="d-flex">
+        <div class="toast-body"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar aviso"></button>
+      </div>
     </div>
   </div>
 

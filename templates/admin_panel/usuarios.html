@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Gestión de usuarios{% endblock %}
+{% block content %}
+<div class="d-flex align-items-baseline justify-content-between mb-1">
+  <h1 class="h3 mb-0">Usuarios</h1>
+  <span class="text-muted" aria-live="polite">{{ usuarios|length }} registrados</span>
+</div>
+<p class="text-muted">Suspender exige motivo obligatorio; reactivar devuelve la cuenta a estado activo.</p>
+<p><a href="{% url 'admin_tecnicos' %}">Volver a aprobación de técnicos</a></p>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th scope="col">Nombre</th>
+      <th scope="col">Correo</th>
+      <th scope="col">Rol</th>
+      <th scope="col">Estado</th>
+      <th scope="col">Motivo suspensión</th>
+      <th scope="col">Acción</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in usuarios %}
+    <tr>
+      <td>
+        {{ u.nombre_completo }}
+        {% if u.rol == "tecnico" %}
+        <div><a class="small" href="{% url 'admin_ficha_tecnico' u.pk %}">Ver ficha</a></div>
+        {% endif %}
+      </td>
+      <td class="text-break">{{ u.correo }}</td>
+      <td>{{ u.get_rol_display }}</td>
+      <td>{{ u.get_estado_display }}</td>
+      <td class="small">{{ u.motivo_suspension|default:"—" }}</td>
+      <td>
+        {% if u.estado == "suspendido" or u.estado == "inactivo" %}
+        <form method="post" action="{% url 'admin_usuarios' %}">
+          {% csrf_token %}
+          <input type="hidden" name="usuario_id" value="{{ u.pk }}">
+          <input type="hidden" name="accion" value="reactivar">
+          <button class="btn btn-fx btn-sm" type="submit">Reactivar</button>
+        </form>
+        {% else %}
+        <button class="btn btn-danger-soft btn-sm" data-bs-toggle="modal" data-bs-target="#modalSusp-{{ u.pk }}">Suspender</button>
+
+        <div class="modal fade" id="modalSusp-{{ u.pk }}" tabindex="-1" aria-labelledby="suspTitulo-{{ u.pk }}" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" method="post" action="{% url 'admin_usuarios' %}">
+              {% csrf_token %}
+              <input type="hidden" name="usuario_id" value="{{ u.pk }}">
+              <input type="hidden" name="accion" value="suspender">
+              <div class="modal-header">
+                <h2 class="modal-title h5" id="suspTitulo-{{ u.pk }}">Suspender a {{ u.nombre_completo }}</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="modal-body">
+                <label class="form-label" for="motivo-{{ u.pk }}">Motivo de la suspensión</label>
+                <textarea class="form-control" id="motivo-{{ u.pk }}" name="motivo" rows="3" maxlength="300" required></textarea>
+                <div class="invalid-feedback">El motivo es obligatorio.</div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-line" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-ink">Suspender</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="text-muted">No hay usuarios registrados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

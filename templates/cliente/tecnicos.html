@@ -6,10 +6,22 @@
 {% endblock %}
 
 {% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
   <div>
     <h1 class="h3 mb-0">Técnicos disponibles</h1>
     <div class="text-muted" id="contador" aria-live="polite"></div>
+    {% if categoria_filtro_txt and solicitud_actual %}
+    <div class="text-muted small">Para tu solicitud #{{ solicitud_actual.pk }} de {{ categoria_filtro_txt }}{% if solicitud_actual.tecnico %} (dirigida a {{ solicitud_actual.tecnico.nombre_completo }}){% endif %}.</div>
+    {% elif categoria_filtro_txt %}
+    <div class="text-muted small">Filtrados por tu solicitud pendiente de {{ categoria_filtro_txt }}.</div>
+    {% else %}
+    <div class="text-muted small">Sin solicitud pendiente: mostramos todos los disponibles.</div>
+    {% endif %}
   </div>
   <div class="fx-seg fx-split-toggle" id="toggleVista" role="tablist" aria-label="Vista">
     <button type="button" class="is-on" data-vista="lista" role="tab"><i class="bi bi-list-ul"></i> Lista</button>
@@ -18,6 +30,31 @@
 </div>
 
 <div class="d-flex flex-wrap gap-3 mb-3">
+  {% if pendientes|length > 1 %}
+  <div class="fx-carrusel-box">
+    <div class="small fw-bold mb-1">Buscando técnico para</div>
+    <div class="fx-carrusel">
+      <button type="button" class="fx-carrusel__btn" data-carrusel-prev aria-label="Anterior">‹</button>
+      <div class="fx-solpick" role="group" aria-label="Elegir solicitud" data-carrusel>
+      {% for p in pendientes %}
+      <a class="fx-solpick__card {% if solicitud_actual and solicitud_actual.pk == p.pk %}is-on{% endif %}"
+         href="{% url 'tecnicos' %}?solicitud={{ p.pk }}">
+        <div class="fx-solpick__head">
+          <strong>#{{ p.pk }} · {{ p.get_categoria_display }}</strong>
+          {% if p.tecnico %}<span class="fx-badge fx-badge--pendiente">→ {{ p.tecnico.nombre_completo|truncatewords:2 }}</span>{% endif %}
+        </div>
+        <p class="fx-solpick__desc">{{ p.descripcion }}</p>
+        <div class="fx-solpick__foot">
+          <span>{% if p.precio_ofrecido %}Ofreces ${{ p.precio_ofrecido }}{% else %}Sin precio{% endif %}</span>
+          <span>{{ p.fecha_creacion|date:"d M, H:i" }}</span>
+        </div>
+      </a>
+      {% endfor %}
+      </div>
+      <button type="button" class="fx-carrusel__btn" data-carrusel-next aria-label="Siguiente">›</button>
+    </div>
+  </div>
+  {% endif %}
   <div>
     <div class="small fw-bold mb-1">Radio de búsqueda</div>
     <div class="fx-filters" id="filtroRadio">
@@ -58,7 +95,8 @@
 
 {% include "partials/modal_elegir.html" %}
 {{ tecnicos|json_script:"tecnicos-data" }}
-{{ cliente|json_script:"cliente-pos" }}
+{{ cliente_pos|json_script:"cliente-pos" }}
+{{ mapa_fallback|json_script:"mapa-fallback" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -68,6 +106,10 @@
 (() => {
   const techs = JSON.parse(document.getElementById("tecnicos-data").textContent);
   const cli = JSON.parse(document.getElementById("cliente-pos").textContent);
+  const esFallback = JSON.parse(document.getElementById("mapa-fallback").textContent);
+  // C3: solo los técnicos con coordenadas reales van al mapa (FN-20).
+  const conCoords = techs.filter((t) => t.lat != null && t.lng != null);
+  if (esFallback) document.getElementById("avisoUbicacion").hidden = false;
   const lista = document.getElementById("lista-tecnicos");
   const tarjetas = [...lista.querySelectorAll(".fx-tech")];
   const vacio = document.getElementById("sin-resultados");
@@ -92,10 +134,11 @@
 
   const pin = L.divIcon({ className: "", html: '<div class="fx-pin"><i class="bi bi-wrench-adjustable"></i></div>', iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -34] });
   const marcadores = new Map();
-  techs.forEach((t) => {
+  conCoords.forEach((t) => {
     const califica = t.rating ? `★ ${t.rating_txt}` : t.rating_txt;
+    const dist = t.km != null ? `${String(t.km).replace(".", ",")} km` : "distancia n/d";
     const m = L.marker([t.lat, t.lng], { icon: pin }).bindPopup(
-      `<strong>${t.nombre}</strong><br>${t.especialidad}<br>${califica} · ${String(t.km).replace(".", ",")} km<br>${t.precio_txt}<br>` +
+      `<strong>${t.nombre}</strong><br>${t.especialidad}<br>${califica} · ${dist}<br>${t.precio_txt}<br>` +
       `<button class="btn btn-fx btn-sm mt-2" data-elegir data-id="${t.id}" data-nombre="${t.nombre}">Elegir</button>`
     );
     marcadores.set(String(t.id), m);
@@ -116,7 +159,11 @@
     if (circulo) { circulo.remove(); circulo = null; }
     if (radio) circulo = L.circle([cli.lat, cli.lng], { radius: radio * 1000, color: "#111B2E", weight: 1.5, fillColor: "#FFC629", fillOpacity: .12 }).addTo(mapa);
 
-    const pts = [[cli.lat, cli.lng], ...visibles.map((c) => { const t = techs.find((x) => String(x.id) === c.dataset.id); return [t.lat, t.lng]; })];
+    const pts = [[cli.lat, cli.lng]];
+    visibles.forEach((c) => {
+      const t = conCoords.find((x) => String(x.id) === c.dataset.id);
+      if (t) pts.push([t.lat, t.lng]);
+    });
     mapa.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
 
     vacio.hidden = visibles.length > 0;

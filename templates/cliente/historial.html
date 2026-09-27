@@ -1,67 +1,143 @@
 {% extends "base.html" %}
 {% block title %}Mis solicitudes{% endblock %}
 {% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
   <h1 class="h3 mb-0">Mis solicitudes</h1>
-  <select class="form-select w-auto" id="orden" aria-label="Ordenar">
+  <select class="form-select w-auto fx-orden" id="orden" aria-label="Ordenar">
     <option value="reciente" selected>Más reciente primero</option>
     <option value="antigua">Más antigua primero</option>
   </select>
 </div>
 
-<div class="fx-filters mb-3" id="filtros" role="group" aria-label="Filtrar por estado">
-  <button class="fx-pill is-on" data-estado="todas">Todas</button>
-  <button class="fx-pill" data-estado="pendiente">Pendiente</button>
-  <button class="fx-pill" data-estado="en_curso">En curso</button>
-  <button class="fx-pill" data-estado="finalizada">Finalizada</button>
-  <button class="fx-pill" data-estado="cancelada">Cancelada</button>
+{# D1 / FN-6: filtro server-side ?estado= (valor inválido = todas) #}
+<div class="fx-filters mb-3" role="group" aria-label="Filtrar por estado">
+  <a class="fx-pill {% if not filtro_estado %}is-on{% endif %}" href="{% url 'cliente_historial' %}">Todas</a>
+  {% for valor, nombre in estados %}
+  <a class="fx-pill {% if filtro_estado == valor %}is-on{% endif %}" href="{% url 'cliente_historial' %}?estado={{ valor }}">{{ nombre }}</a>
+  {% endfor %}
 </div>
 
+{% if solicitudes %}
 <div class="d-grid gap-3" id="lista">
   {% for s in solicitudes %}
-  <article class="fx-card" data-estado="{{ s.estado }}" data-orden="{{ forloop.counter }}">
+  <article class="fx-card" data-orden="{{ forloop.counter }}">
     <div class="d-flex align-items-start gap-3">
       <div class="fx-cat__icon m-0 flex-shrink-0" style="width:48px;height:48px;border-radius:14px;font-size:1.2rem"><i class="bi {{ s.icono }}"></i></div>
       <div class="flex-grow-1" style="min-width:0">
         <div class="d-flex justify-content-between align-items-start gap-2">
-          <h2 class="h6 fw-bold mb-1">{{ s.categoria }}</h2>
+          <h2 class="h6 fw-bold mb-1">#{{ s.pk }} · {{ s.get_categoria_display }}</h2>
           {% include "partials/estado.html" with estado=s.estado %}
         </div>
         <p class="mb-1 text-muted small">{{ s.descripcion }}</p>
-        <div class="small"><i class="bi bi-calendar3 text-muted"></i> {{ s.fecha }}
+        <div class="small"><i class="bi bi-calendar3 text-muted"></i> {{ s.fecha_creacion|date:"d M Y, H:i" }}
           <span class="mx-1 text-muted">|</span>
-          <i class="bi bi-person text-muted"></i> {{ s.tecnico|default:"Sin asignar" }}</div>
+          <i class="bi bi-person text-muted"></i> {% if s.tecnico %}{{ s.tecnico.nombre_completo }}{% else %}Sin asignar{% endif %}</div>
+        {% if s.estado == "finalizada" and s.monto_final %}
+        <div class="small mt-1"><i class="bi bi-cash-coin text-muted"></i> Monto: ${{ s.monto_final }}</div>
+        {% endif %}
+        {% if s.notas_finales %}
+        <div class="small mt-1"><i class="bi bi-chat-left-text text-muted"></i> Notas del técnico: {{ s.notas_finales }}</div>
+        {% endif %}
+        {% if s.calificacion %}
+        <div class="small mt-1 text-warning" aria-label="Calificaste {{ s.calificacion.estrellas }} de 5">
+          {% for n in "12345" %}<i class="bi {% if forloop.counter <= s.calificacion.estrellas %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}
+          <span class="text-muted">({{ s.calificacion.estrellas }}/5)</span>
+        </div>
+        {% endif %}
       </div>
     </div>
-    {% if s.estado == "finalizada" and not s.calificada %}
+    {# D3 / FN-7: solo finalizada SIN calificación muestra el CTA #}
+    {% if s.puede_calificarse %}
     <div class="mt-3 d-flex gap-2">
-      <button class="btn btn-fx btn-sm" data-calificar data-tecnico="{{ s.tecnico }}"><i class="bi bi-star-fill"></i> Calificar servicio</button>
+      <button class="btn btn-fx btn-sm" data-calificar
+              data-tecnico="{% if s.tecnico %}{{ s.tecnico.nombre_completo }}{% endif %}"
+              data-url="{% url 'solicitud_calificar' s.pk %}"><i class="bi bi-star-fill"></i> Calificar servicio</button>
     </div>
+    {% endif %}
+    {# E2 / FN-17 + Bloque H: monto propuesto → aceptar/rechazar; aceptado → pagar #}
+    {% if s.estado == "finalizada" and s.monto_final %}
+    <div class="mt-3 d-flex flex-wrap gap-2 align-items-center">
+      {% if not s.monto_aceptado %}
+      <span class="fx-badge fx-badge--pendiente">Monto propuesto: ${{ s.monto_final }}</span>
+      <form method="post" action="{% url 'monto_decidir' %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="solicitud_id" value="{{ s.pk }}">
+        <input type="hidden" name="accion" value="aceptar_monto">
+        <button class="btn btn-fx btn-sm" type="submit">Aceptar monto</button>
+      </form>
+      <form method="post" action="{% url 'monto_decidir' %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="solicitud_id" value="{{ s.pk }}">
+        <input type="hidden" name="accion" value="rechazar_monto">
+        <button class="btn btn-line btn-sm" type="submit"
+                onclick="return confirm('¿Rechazar el monto? Volverá a en curso para que el técnico lo ajuste.');">Rechazar</button>
+      </form>
+      {% elif s.puede_pagarse %}
+      <a class="btn btn-fx btn-sm" href="{% url 'solicitud_pagar' s.pk %}"><i class="bi bi-credit-card"></i> Pagar ${{ s.monto_final }}</a>
+      {% else %}
+      <span class="fx-badge fx-badge--finalizada"><i class="bi bi-check-circle"></i> Pagada</span>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if s.estado == "pendiente" %}
+    <div class="mt-3 d-flex flex-wrap gap-2 align-items-end">
+      <form method="post" action="{% url 'solicitud_precio' s.pk %}" class="d-flex flex-wrap gap-2 align-items-end">
+        {% csrf_token %}
+        <div>
+          <label class="form-label small mb-1" for="precio-{{ s.pk }}">Precio que ofreces</label>
+          <input class="form-control form-control-sm" type="number" id="precio-{{ s.pk }}" name="precio_ofrecido"
+                 min="1" value="{{ s.precio_ofrecido|default:'' }}" placeholder="Vacío = lo pone el técnico" style="max-width:300px">
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="vis-{{ s.pk }}" name="visible_tecnicos"
+                 {% if s.visible_tecnicos %}checked{% endif %} onchange="this.form.submit()">
+          <label class="form-check-label small" for="vis-{{ s.pk }}">Visible para técnicos</label>
+        </div>
+        <button class="btn btn-line btn-sm" type="submit">Guardar cambios</button>
+      </form>
+      <form method="post" action="{% url 'solicitud_cancelar' s.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-line btn-sm" type="submit"
+                onclick="return confirm('¿Cancelar esta solicitud?');">Cancelar solicitud</button>
+      </form>
+    </div>
+    {% if s.tecnico %}
+    <div class="small text-muted mt-2">Dirigida a {{ s.tecnico.nombre_completo }} (él decide si la acepta).</div>
+    {% endif %}
     {% endif %}
   </article>
   {% endfor %}
 </div>
-
-<div class="fx-card fx-empty" id="vacio" hidden>
+{% else %}
+{# D1: estado vacío con CTA a crear #}
+<div class="fx-card fx-empty" id="vacio">
   <i class="bi bi-receipt"></i>
-  <h3>No tienes solicitudes en este estado</h3>
+  <h3>{% if filtro_estado %}No tienes solicitudes en este estado{% else %}Aún no tienes solicitudes{% endif %}</h3>
   <a class="btn btn-fx mt-2" href="{% url 'solicitud_nueva' %}">Crear solicitud</a>
 </div>
+{% endif %}
 
-{# Modal de calificación (FN-7) #}
+{# D3 / FN-7: modal cableado al POST real solicitud_calificar #}
 <div class="modal fade" id="modalCalificar" tabindex="-1" aria-labelledby="calTitulo" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content" id="formCalificar">
+    <form class="modal-content" id="formCalificar" method="post" action="">
+      {% csrf_token %}
       <div class="modal-header">
         <h2 class="modal-title h5" id="calTitulo">Califica a <span id="calTecnico"></span></h2>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body">
+        <input type="hidden" name="estrellas" id="notaInput" value="">
         <div class="fx-stars mb-3" id="estrellas" role="radiogroup" aria-label="Estrellas">
           {% for n in "12345" %}<button type="button" role="radio" aria-checked="false" aria-label="{{ n }} estrella{{ n|pluralize }}" data-n="{{ n }}"><i class="bi bi-star-fill"></i></button>{% endfor %}
         </div>
         <label class="form-label" for="comentario">Comentario <span class="fw-normal text-muted">(opcional)</span></label>
-        <textarea class="form-control" id="comentario" rows="3" maxlength="300" data-counter="#cuentaCom"></textarea>
+        <textarea class="form-control" name="comentario" id="comentario" rows="3" maxlength="300" data-counter="#cuentaCom"></textarea>
         <div class="small text-muted text-end" id="cuentaCom"></div>
         <div class="form-text">Solo puedes calificar una vez y no se puede editar después.</div>
       </div>
@@ -77,49 +153,44 @@
 {% block extra_js %}
 <script>
 (() => {
+  // Orden client-side (el filtro de estado es server-side vía ?estado=).
   const lista = document.getElementById("lista");
-  const cards = [...lista.children];
-  const vacio = document.getElementById("vacio");
-  let estado = "todas";
-
-  function pintar() {
-    const asc = document.getElementById("orden").value === "antigua";
-    const visibles = cards.filter((c) => estado === "todas" || c.dataset.estado === estado);
-    cards.forEach((c) => (c.hidden = !visibles.includes(c)));
-    visibles.sort((a, b) => (asc ? b.dataset.orden - a.dataset.orden : a.dataset.orden - b.dataset.orden))
-            .forEach((c) => lista.appendChild(c));
-    vacio.hidden = visibles.length > 0;
+  const selOrden = document.getElementById("orden");
+  if (lista && selOrden) {
+    const cards = [...lista.children];
+    selOrden.addEventListener("change", () => {
+      const asc = selOrden.value === "antigua";
+      [...cards].sort((a, b) => (asc ? b.dataset.orden - a.dataset.orden : a.dataset.orden - b.dataset.orden))
+                .forEach((c) => lista.appendChild(c));
+    });
   }
-  document.getElementById("filtros").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-estado]"); if (!b) return;
-    estado = b.dataset.estado;
-    document.querySelectorAll("#filtros .fx-pill").forEach((x) => x.classList.toggle("is-on", x === b));
-    pintar();
-  });
-  document.getElementById("orden").addEventListener("change", pintar);
 
-  // ---- Calificación ----
+  // ---- Calificación (POST real a solicitud_calificar) ----
+  const formCal = document.getElementById("formCalificar");
+  if (!formCal) return;
   const modal = new bootstrap.Modal(document.getElementById("modalCalificar"));
   const estrellas = [...document.querySelectorAll("#estrellas button")];
   const enviar = document.getElementById("enviarCal");
-  let nota = 0, cardActual = null;
+  const notaInput = document.getElementById("notaInput");
   const marcar = (n) => estrellas.forEach((s, i) => { s.classList.toggle("on", i < n); s.setAttribute("aria-checked", i + 1 === n); });
 
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-calificar]"); if (!b) return;
-    cardActual = b.closest("article"); nota = 0; marcar(0); enviar.disabled = true;
-    document.getElementById("calTecnico").textContent = b.dataset.tecnico;
+    formCal.action = b.dataset.url;
+    notaInput.value = ""; marcar(0); enviar.disabled = true;
+    document.getElementById("calTecnico").textContent = b.dataset.tecnico || "el servicio";
     document.getElementById("comentario").value = "";
     modal.show();
   });
-  estrellas.forEach((s) => s.addEventListener("click", () => { nota = +s.dataset.n; marcar(nota); enviar.disabled = false; }));
-  document.getElementById("formCalificar").addEventListener("submit", (e) => {
-    e.preventDefault(); modal.hide();
-    cardActual.querySelector("[data-calificar]").closest("div").remove();
-    fxToast("¡Gracias por calificar!");
+  estrellas.forEach((s) => s.addEventListener("click", () => {
+    notaInput.value = s.dataset.n; marcar(+s.dataset.n); enviar.disabled = false;
+  }));
+  // Preview al pasar la flecha: pinta hasta la estrella bajo el cursor y al
+  // salir restaura lo elegido con clic (o lo vacía si aún no hay elección).
+  estrellas.forEach((s) => s.addEventListener("mouseenter", () => marcar(+s.dataset.n)));
+  document.getElementById("estrellas").addEventListener("mouseleave", () => {
+    marcar(notaInput.value ? +notaInput.value : 0);
   });
-
-  pintar();
 })();
 </script>
 {% endblock %}

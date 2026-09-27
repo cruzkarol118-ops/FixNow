@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Moderar reseñas{% endblock %}
+{% block content %}
+<div class="d-flex align-items-baseline justify-content-between mb-1">
+  <h1 class="h3 mb-0">Reseñas de clientes</h1>
+  <span class="text-muted">{{ resenas|length }} en vista</span>
+</div>
+<p class="text-muted">Ocultar quita la reseña del perfil público y la saca del promedio (se recalcula solo).</p>
+
+<div class="fx-filters mb-3" role="group" aria-label="Filtrar reseñas">
+  <a class="fx-pill {% if filtro == 'todas' %}is-on{% endif %}" href="{% url 'admin_resenas' %}">Todas</a>
+  <a class="fx-pill {% if filtro == 'revision' %}is-on{% endif %}" href="{% url 'admin_resenas' %}?filtro=revision">En revisión</a>
+  <a class="fx-pill {% if filtro == 'ocultas' %}is-on{% endif %}" href="{% url 'admin_resenas' %}?filtro=ocultas">Ocultas</a>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="d-grid gap-3">
+  {% for r in resenas %}
+  <article class="fx-card">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div class="text-warning" aria-label="{{ r.estrellas }} de 5">
+        {% for n in "12345" %}<i class="bi {% if forloop.counter <= r.estrellas %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}
+        <span class="text-muted">({{ r.estrellas }}/5)</span>
+        {% if r.oculta %}<span class="fx-badge">Oculta</span>{% endif %}
+        {% if r.revision_admin and not r.oculta %}<span class="fx-badge fx-badge--pendiente">En revisión</span>{% endif %}
+      </div>
+      <span class="small text-muted">{{ r.fecha_creacion|date:"d M Y, H:i" }}</span>
+    </div>
+    {% if r.comentario %}<p class="mt-2 mb-1">{{ r.comentario }}</p>{% endif %}
+    <div class="small text-muted">De {{ r.solicitud.cliente.nombre_completo }} a {{ r.solicitud.tecnico.nombre_completo }} · solicitud #{{ r.solicitud_id }}</div>
+    <form method="post" action="{% url 'resena_moderar' %}" class="mt-2 d-flex flex-wrap gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="resena_id" value="{{ r.pk }}">
+      {% if r.oculta %}
+      <input type="hidden" name="accion" value="mostrar">
+      <button class="btn btn-fx btn-sm" type="submit">Mostrar de nuevo</button>
+      {% else %}
+      {% if r.revision_admin %}
+      <button class="btn btn-fx btn-sm" type="submit" name="accion" value="revisada">Marcar revisada</button>
+      {% endif %}
+      <button class="btn btn-danger-soft btn-sm" type="submit" name="accion" value="ocultar"
+              onclick="return confirm('¿Ocultar esta reseña? Dejará de contar en el promedio.');">Ocultar</button>
+      {% endif %}
+    </form>
+  </article>
+  {% empty %}
+  <div class="fx-card fx-empty">
+    <i class="bi bi-chat-quote"></i>
+    <h3>No hay reseñas en esta vista</h3>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

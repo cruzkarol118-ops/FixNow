@@ -9,6 +9,72 @@ function fxToast(mensaje) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // ---- Carrusel genérico: flechas ‹ › + arrastre con mouse ----
+  document.querySelectorAll("[data-carrusel]").forEach((sc) => {
+    const caja = sc.closest(".fx-carrusel");
+    const prev = caja ? caja.querySelector("[data-carrusel-prev]") : null;
+    const next = caja ? caja.querySelector("[data-carrusel-next]") : null;
+    const paso = () => {
+      const tarjeta = sc.querySelector(":scope > *");
+      return tarjeta ? tarjeta.getBoundingClientRect().width + 10 : 200;
+    };
+    const pintar = () => {
+      if (prev) prev.disabled = sc.scrollLeft <= 4;
+      if (next) next.disabled = sc.scrollLeft + sc.clientWidth >= sc.scrollWidth - 4;
+    };
+    if (prev) prev.addEventListener("click", () => sc.scrollBy({ left: -paso(), behavior: "smooth" }));
+    if (next) next.addEventListener("click", () => sc.scrollBy({ left: paso(), behavior: "smooth" }));
+    sc.addEventListener("scroll", pintar, { passive: true });
+    pintar();
+
+    // Arrastre: distingue arrastrar de clic para no romper los enlaces.
+    let x0 = 0, sl0 = 0, moviendo = false;
+    sc.addEventListener("pointerdown", (e) => {
+      // Solo mouse: en táctil manda el scroll nativo (no pelear con el dedo).
+      // Sin preventDefault: seleccionar texto sigue permitido; el clic solo
+      // se suprime si hubo desplazamiento real (ver handler de click abajo).
+      if (e.pointerType !== "mouse") return;
+      moviendo = true; x0 = e.clientX; sl0 = sc.scrollLeft;
+      sc.classList.add("arrastrando");
+    });
+    sc.addEventListener("pointermove", (e) => {
+      if (!moviendo) return;
+      if (Math.abs(e.clientX - x0) > 6) sc.classList.add("arrastrado");
+      sc.scrollLeft = sl0 - (e.clientX - x0);
+    });
+    const soltar = () => { moviendo = false; sc.classList.remove("arrastrando"); };
+    sc.addEventListener("pointerup", soltar);
+    sc.addEventListener("pointercancel", soltar);
+    sc.addEventListener(
+      "click", (e) => {
+        if (sc.classList.contains("arrastrado")) {
+          e.preventDefault(); e.stopPropagation();
+          sc.classList.remove("arrastrado");
+        }
+      }, true);
+  });
+
+  // ---- Mostrar / ocultar contraseña (ojo en login, registros, cambio) ----
+  document.querySelectorAll('input[type="password"]').forEach((input) => {
+    if (input.closest(".fx-pass")) return;
+    const wrap = document.createElement("div");
+    wrap.className = "fx-pass";
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fx-pass__btn";
+    btn.setAttribute("aria-label", "Mostrar contraseña");
+    btn.innerHTML = '<i class="bi bi-eye"></i>';
+    btn.addEventListener("click", () => {
+      const mostrar = input.type === "password";
+      input.type = mostrar ? "text" : "password";
+      btn.querySelector("i").className = mostrar ? "bi bi-eye-slash" : "bi bi-eye";
+      btn.setAttribute("aria-label", mostrar ? "Ocultar contraseña" : "Mostrar contraseña");
+    });
+    wrap.appendChild(btn);
+  });
+
   // Enlaces a pantallas que todavía no existen
   document.querySelectorAll("[data-pronto]").forEach((el) => {
     el.addEventListener("click", (e) => {

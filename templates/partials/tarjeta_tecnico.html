@@ -1,19 +1,22 @@
 {# Tarjeta completa (FN-4/FN-5). Atributos data-* los usa el JS de filtrado. #}
 <article class="fx-card fx-tech" data-id="{{ t.id }}" data-nombre="{{ t.nombre }}"
-         data-km="{{ t.km|stringformat:'.2f' }}" data-rating="{% if t.rating %}{{ t.rating|stringformat:'.2f' }}{% else %}0{% endif %}">
+         data-km="{% if t.km != None %}{{ t.km|stringformat:'.2f' }}{% else %}99999{% endif %}" data-rating="{% if t.rating %}{{ t.rating|stringformat:'.2f' }}{% else %}0{% endif %}">
+  {% if elegido_id == t.id %}<span class="fx-badge fx-badge--pendiente mb-2">Preseleccionado</span>{% endif %}
   <div class="fx-tech__top">
     <div class="fx-avatar" aria-hidden="true">{{ t.iniciales }}</div>
     <div style="min-width:0">
-      <h3 class="fx-tech__name">{{ t.nombre }}</h3>
+      <h3 class="fx-tech__name"><a href="{% url 'tecnico_publico' t.id %}">{{ t.nombre }}</a></h3>
       <div class="fx-tech__spec"><i class="bi {{ t.icono }}"></i>{{ t.especialidad }}</div>
     </div>
   </div>
   <div class="fx-tech__meta">
     <span>
+      <a href="{% url 'tecnico_publico' t.id %}" aria-label="Ver perfil y reseñas de {{ t.nombre }}">
       {% if t.rating %}<i class="bi bi-star-fill fx-star"></i>{{ t.rating_txt }} <span class="fw-normal text-muted">({{ t.resenas }})</span>
       {% else %}<i class="bi bi-star"></i><span class="fw-normal text-muted">{{ t.rating_txt }}</span>{% endif %}
+      </a>
     </span>
-    <span><i class="bi bi-signpost-2"></i>{{ t.km|floatformat:1 }} km</span>
+    <span><i class="bi bi-signpost-2"></i>{% if t.km != None %}{{ t.km|floatformat:1 }} km{% else %}distancia n/d{% endif %}</span>
   </div>
   <div class="fx-tech__foot">
     <div>

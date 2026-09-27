@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Técnicos a domicilio{% endblock %}
 {% block content %}
+{% if messages %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  fxToast("{% for message in messages %}{{ message|escapejs }}{% if not forloop.last %} · {% endif %}{% endfor %}");
+});
+</script>
+{% endif %}
 <section class="fx-hero">
   <div class="fx-hero__inner">
     <div>

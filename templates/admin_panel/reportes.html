@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<div class="d-flex align-items-baseline justify-content-between mb-1">
+  <h1 class="h3 mb-0">Reportes</h1>
+  <span class="text-muted">Comisión actual: {{ porcentaje_actual }}%</span>
+</div>
+<p class="text-muted">Solo lectura. Rango por defecto: últimos 30 días.</p>
+<p>
+  <a href="{% url 'admin_tecnicos' %}">Aprobaciones</a> ·
+  <a href="{% url 'admin_usuarios' %}">Usuarios</a>
+</p>
+
+{# E4 / FN-16: filtro por fechas ?desde=&hasta= (YYYY-MM-DD) #}
+<form class="fx-card mb-3" method="get" action="{% url 'admin_reportes' %}">
+  <div class="row g-2 align-items-end">
+    <div class="col-sm-4">
+      <label class="form-label" for="desde">Desde</label>
+      <input class="form-control" type="date" id="desde" name="desde" value="{{ desde }}">
+    </div>
+    <div class="col-sm-4">
+      <label class="form-label" for="hasta">Hasta</label>
+      <input class="form-control" type="date" id="hasta" name="hasta" value="{{ hasta }}">
+    </div>
+    <div class="col-sm-4 d-flex gap-2">
+      <button class="btn btn-fx" type="submit">Filtrar</button>
+      <a class="btn btn-line" href="{% url 'admin_reportes' %}">Últimos 30 días</a>
+    </div>
+  </div>
+</form>
+
+<div class="row g-3">
+  <div class="col-md-6 col-lg-3">
+    <div class="fx-card"><div class="text-muted small">Servicios finalizados (rango)</div>
+      <div class="h3 mb-0">{{ servicios_finalizados }}</div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="fx-card"><div class="text-muted small">Suma de comisiones (rango)</div>
+      <div class="h3 mb-0">${{ comisiones_suma }}</div>
+      <div class="small text-muted">{{ comisiones_cantidad }} comisión(es)</div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="fx-card"><div class="text-muted small">Pagos exitosos (rango)</div>
+      <div class="h3 mb-0">{{ pagos_exitosos }}</div>
+      <div class="small text-muted">Total cobrado: ${{ pagos_total }}</div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="fx-card"><div class="text-muted small">Técnicos activos</div>
+      <div class="h3 mb-0">{{ tecnicos_activos }}</div>
+      <div class="small text-muted">{{ tecnicos_disponibles }} disponible(s)</div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="fx-card"><div class="text-muted small">Usuarios activos</div>
+      <div class="h3 mb-0">{{ usuarios_activos }}</div></div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="fx-card"><div class="text-muted small">Usuarios suspendidos</div>
+      <div class="h3 mb-0">{{ usuarios_suspendidos }}</div></div>
+  </div>
+</div>
+{% endblock %}

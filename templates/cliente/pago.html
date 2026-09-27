@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Pagar solicitud #{{ solicitud.pk }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Pagar solicitud #{{ solicitud.pk }} · {{ solicitud.get_categoria_display }}</h1>
+<p class="text-muted">{{ solicitud.descripcion }}</p>
+
+{# E2 / FN-17: aviso explícito de que esto es una SIMULACIÓN para demo #}
+<div class="alert alert-warning" role="note">
+  <strong>Pago en modo SIMULACIÓN (demo).</strong>
+  No hay pasarela real: el botón solo simula éxito/fallo.
+  <strong>Nunca</strong> escribas un número de tarjeta completo ni el CVV;
+  solo se piden los últimos 4 dígitos y únicamente se guarda una referencia
+  simulada (<code>SIM-…</code>).
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="fx-card mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <span class="text-muted">Monto a pagar (definido por el técnico al finalizar)</span>
+    <strong class="h4 mb-0">${{ solicitud.monto_final }}</strong>
+  </div>
+  <div class="small text-muted mt-1">
+    Técnico: {% if solicitud.tecnico %}{{ solicitud.tecnico.nombre_completo }}{% else %}Sin asignar{% endif %}
+  </div>
+  {% if pago and pago.estado == "fallido" %}
+  <div class="alert alert-danger mt-3 mb-0" role="note">
+    Tu intento anterior con {{ pago.get_medio_pago_display }} falló: {{ pago.motivo_fallo }}
+    Puedes reintentarlo abajo (se reutiliza el mismo registro, sin duplicar).
+  </div>
+  {% endif %}
+</div>
+
+<form class="fx-card" method="post" action="{% url 'solicitud_pagar' solicitud.pk %}">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="mb-3">
+    <label class="form-label" for="medio">{{ form.medio.label }}</label>
+    {{ form.medio }}
+    {% if form.medio.errors %}<div class="text-danger small">{{ form.medio.errors }}</div>{% endif %}
+  </div>
+
+  <div class="mb-3" id="grupoUltimos4" hidden>
+    <label class="form-label" for="ultimos4">{{ form.ultimos4.label }}</label>
+    {{ form.ultimos4 }}
+    <div class="form-text">{{ form.ultimos4.help_text }}</div>
+    {% if form.ultimos4.errors %}<div class="text-danger small">{{ form.ultimos4.errors }}</div>{% endif %}
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="motivo">{{ form.motivo.label }}</label>
+    {{ form.motivo }}
+    {% if form.motivo.errors %}<div class="text-danger small">{{ form.motivo.errors }}</div>{% endif %}
+  </div>
+
+  {{ form.resultado }}
+  {% if form.resultado.errors %}<div class="text-danger small mb-2">{{ form.resultado.errors }}</div>{% endif %}
+
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-fx" type="submit" data-resultado="exito">
+      <i class="bi bi-check-circle"></i> Simular pago exitoso
+    </button>
+    <button class="btn btn-line" type="submit" data-resultado="fallo">
+      <i class="bi bi-x-circle"></i> Simular pago fallido
+    </button>
+    <a class="btn btn-line" href="{% url 'cliente_historial' %}">Volver al historial</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  // Muestra últimos-4 solo si el medio es tarjeta; el resultado lo elige el botón.
+  const medio = document.getElementById("medio");
+  const grupo = document.getElementById("grupoUltimos4");
+  const resultado = document.getElementById("resultado");
+  const mostrar = () => { if (grupo) grupo.hidden = medio.value !== "tarjeta"; };
+  if (medio) { medio.addEventListener("change", mostrar); mostrar(); }
+  document.querySelectorAll("[data-resultado]").forEach((b) =>
+    b.addEventListener("click", () => { if (resultado) resultado.value = b.dataset.resultado; }));
+})();
+</script>
+{% endblock %}

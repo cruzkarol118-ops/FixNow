@@ -25,6 +25,8 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# PROD: añade aquí el dominio real (p. ej. ["fixnow.example.com"]) y pon
+# DEBUG=False. En desarrollo se deja vacío.
 ALLOWED_HOSTS = []
 
 
@@ -67,6 +69,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # D4 / FN-19: conteo real de no-leídas para la campana.
+                'frontend.context_processors.campana',
             ],
         },
     },
@@ -87,9 +91,24 @@ DATABASES = {
         "PASSWORD": config("DB_PASSWORD"),
         "HOST": "127.0.0.1",
         "PORT": "3306",
-        "OPTIONS": {"charset": "utf8mb4"},
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            # Bloque F3: modo estricto a nivel de conexión (antes solo dependía
+            # del sql_mode global del servidor).
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        # Bloque F4: la BD de test también en utf8mb4 (si no, los ★ de las
+        # notificaciones fallan con "Incorrect string value").
+        "TEST": {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"},
     }
 }
+
+import sys
+
+# Bloque F4: hasher rápido SOLO al correr la suite (no afecta prod);
+# si no, cada create_user con PBKDF2 hace la suite de minutos.
+if "test" in sys.argv:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 
 # Password validation
@@ -130,11 +149,9 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "cliente_inicio"
+LOGOUT_REDIRECT_URL = "landing"
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Bloque A5: backend de correo para desarrollo (antes: dict MAILERS inválido).
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

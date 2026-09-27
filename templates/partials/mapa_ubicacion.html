@@ -1,0 +1,26 @@
+{% load l10n %}
+{% comment %}
+  Selector de ubicación por mapa (cliente y técnico).
+  Uso: include "partials/mapa_ubicacion.html" with lat=... lng=...
+  Requiere en el form los campos ocultos id_latitud / id_longitud.
+  - Botón "Mi ubicación actual": centra el mapa donde estás (GPS del navegador).
+  - Clic en el mapa: mueve el pin a ese punto.
+  Nunca se digitan coordenadas a mano.
+  NOTA: lat/lng van con |unlocalize porque es-co usa coma decimal y el JS
+  necesita punto (parseFloat("4,67") trunca a 4).
+{% endcomment %}
+<div class="mb-3">
+  <span class="form-label">Ubicación en el mapa</span>
+  <div id="mapa-ubicacion" data-mapa-ubicacion
+       data-lat="{{ lat|default:''|unlocalize }}" data-lng="{{ lng|default:''|unlocalize }}"></div>
+  <div class="d-flex flex-wrap gap-2 mt-2">
+    <button type="button" class="btn btn-line btn-sm" data-mi-ubicacion>
+      <i class="bi bi-crosshair"></i> Usar mi ubicación actual
+    </button>
+    <button type="button" class="btn btn-line btn-sm" data-quitar-ubicacion>
+      <i class="bi bi-x-circle"></i> Quitar ubicación
+    </button>
+  </div>
+  <div class="form-text" data-coords-texto>Sin ubicación marcada: no aparecerás en búsquedas por cercanía.</div>
+  <div class="form-text">Toca un punto del mapa o usa tu ubicación actual. Se guarda al presionar "Guardar cambios".</div>
+</div>

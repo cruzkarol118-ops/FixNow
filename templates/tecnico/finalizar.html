@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Finalizar solicitud{% endblock %}
+{% block content %}
+<div class="fx-auth fx-auth--wide">
+  <h1>Finalizar solicitud #{{ solicitud.pk }}</h1>
+  <p class="text-muted">{{ solicitud.get_categoria_display }} para {{ solicitud.cliente.nombre_completo }} — {{ solicitud.direccion }}</p>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  {% if form.errors %}
+  <div class="alert alert-danger" role="alert">
+    Revisa el formulario:
+    {% for campo, errores in form.errors.items %}
+      {% for e in errores %}<div>{{ e }}</div>{% endfor %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="fx-card needs-validation" novalidate>
+    {% csrf_token %}
+    {% if solicitud.precio_ofrecido %}
+    <div class="alert alert-info" role="note">
+      El cliente ofrece <strong>${{ solicitud.precio_ofrecido }}</strong>: lo dejamos puesto.
+      Cámbialo solo si el trabajo justifica otro valor (el cliente lo confirma antes de pagar).
+    </div>
+    {% endif %}
+    <div class="mb-4">
+      <label class="form-label" for="monto">Monto del servicio *</label>
+      <input class="form-control" type="number" id="monto" name="monto" min="1" step="1" required
+             value="{{ form.monto.value|default:'' }}" placeholder="Ej: 60000">
+      <div class="form-text">Obligatorio: es lo que el cliente deberá pagar.</div>
+      <div class="invalid-feedback">El monto es obligatorio y debe ser mayor que cero.</div>
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="notas">Notas de finalización <span class="fw-normal text-muted">(opcional)</span></label>
+      <textarea class="form-control" id="notas" name="notas" rows="3" maxlength="300">{{ form.notas.value|default:"" }}</textarea>
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="evidencia">Foto de evidencia final <span class="fw-normal text-muted">(opcional)</span></label>
+      <input class="form-control" type="file" id="evidencia" name="evidencia" accept="image/jpeg,image/png">
+      <div class="form-text">JPG o PNG, máximo 5 MB.</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-line flex-fill" href="{% url 'tecnico_solicitudes' %}">Volver</a>
+      <button class="btn btn-fx flex-fill" type="submit">Finalizar servicio</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

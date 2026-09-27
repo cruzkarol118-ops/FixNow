@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Página desactualizada{% endblock %}
+{% block content %}
+<div class="fx-auth">
+  <h1>La página estaba desactualizada</h1>
+  <p class="text-muted">Por seguridad, los formularios dejan de valer si iniciaste
+  sesión en otra pestaña o usaste el botón "atrás" del navegador (el código de
+  seguridad rota al entrar). No es un error de tu cuenta.</p>
+  <a class="btn btn-fx btn-lg w-100" href="{% url 'login' %}">Volver a ingresar</a>
+</div>
+{% endblock %}

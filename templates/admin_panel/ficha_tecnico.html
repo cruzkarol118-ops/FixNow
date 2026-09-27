@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Ficha de {{ tecnico.nombre_completo }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'admin_tecnicos' %}">&larr; Volver a aprobación de técnicos</a></p>
+<div class="d-flex align-items-center gap-3 mb-3">
+  <div class="fx-avatar" aria-hidden="true">{{ tecnico.nombre_completo|slice:":1" }}</div>
+  <div class="flex-grow-1">
+    <h1 class="h3 mb-0">{{ tecnico.nombre_completo }}</h1>
+    <div class="small text-muted">Registrado el {{ tecnico.date_joined|date:"d/m/Y H:i" }}</div>
+  </div>
+  <span class="fx-badge">{{ tecnico.get_estado_display }}</span>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <article class="fx-card h-100">
+      <h2 class="h5">Datos y perfil</h2>
+      <dl class="row small mb-0">
+        <dt class="col-5 text-muted fw-normal">Cédula</dt><dd class="col-7 fw-semibold">{{ tecnico.cedula }}</dd>
+        <dt class="col-5 text-muted fw-normal">Correo</dt><dd class="col-7 fw-semibold text-break">{{ tecnico.correo }}</dd>
+        <dt class="col-5 text-muted fw-normal">Teléfono</dt><dd class="col-7 fw-semibold">{{ tecnico.telefono }}</dd>
+        <dt class="col-5 text-muted fw-normal">Especialidad</dt><dd class="col-7 fw-semibold">{{ perfil.get_especialidad_display }}</dd>
+        <dt class="col-5 text-muted fw-normal">Ciudad</dt><dd class="col-7 fw-semibold">{{ perfil.ciudad }}</dd>
+        <dt class="col-5 text-muted fw-normal">Zona</dt><dd class="col-7 fw-semibold">{{ perfil.zona_cobertura|default:"—" }}</dd>
+        <dt class="col-5 text-muted fw-normal">Precio</dt><dd class="col-7 fw-semibold">{{ perfil.precio_referencia_txt }}</dd>
+        <dt class="col-5 text-muted fw-normal">Disponible</dt><dd class="col-7 fw-semibold">{% if perfil.disponible %}Sí{% else %}No{% endif %}</dd>
+        <dt class="col-5 text-muted fw-normal">Calificación</dt><dd class="col-7 fw-semibold">{{ perfil.calificacion_promedio }} ({{ perfil.total_calificaciones }})</dd>
+        <dt class="col-5 text-muted fw-normal">Servicios</dt><dd class="col-7 fw-semibold mb-0">{{ n_finalizadas }} finalizados · {{ n_en_curso }} en curso</dd>
+      </dl>
+      {% if tecnico.motivo_rechazo %}
+      <div class="alert alert-warning small mt-3 mb-0" role="note">Observación: {{ tecnico.motivo_rechazo }}</div>
+      {% endif %}
+      {% if tecnico.motivo_suspension %}
+      <div class="alert alert-danger small mt-3 mb-0" role="note">Suspensión: {{ tecnico.motivo_suspension }}</div>
+      {% endif %}
+    </article>
+  </div>
+  <div class="col-lg-6">
+    <article class="fx-card h-100">
+      <h2 class="h5">Documentos ({{ documentos|length|add:1 }})</h2>
+      <ul class="list-unstyled mb-0 d-grid gap-2">
+        <li>
+          {% if perfil.documento_certificacion %}
+          <a class="btn btn-line btn-sm" href="{{ perfil.documento_certificacion.url }}" target="_blank" rel="noopener">
+            <i class="bi bi-file-earmark-text"></i> Certificación principal
+          </a>
+          {% else %}
+          <span class="small text-muted">Sin certificación principal.</span>
+          {% endif %}
+        </li>
+        {% for d in documentos %}
+        <li>
+          <a class="btn btn-line btn-sm" href="{{ d.archivo.url }}" target="_blank" rel="noopener">
+            <i class="bi bi-file-earmark-text"></i> {{ d.nombre }}
+          </a>
+          <span class="small text-muted">{{ d.fecha_subida|date:"d/m/Y" }} · acredita: {{ d.get_especialidad_display }} · {{ d.get_estado_display }}</span>
+          {% if d.motivo %}<div class="small text-muted">Motivo: {{ d.motivo }}</div>{% endif %}
+          {% if d.estado == "pendiente" %}
+          <span class="d-flex gap-2 mt-1">
+            <form method="post" action="{% url 'documento_decidir' %}" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="documento_id" value="{{ d.pk }}">
+              <input type="hidden" name="accion" value="aprobar_doc">
+              <button class="btn btn-fx btn-sm" type="submit">Aprobar habilidad</button>
+            </form>
+            <form method="post" action="{% url 'documento_decidir' %}" class="d-inline-flex gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="documento_id" value="{{ d.pk }}">
+              <input type="hidden" name="accion" value="rechazar_doc">
+              <input class="form-control form-control-sm" type="text" name="motivo" maxlength="300" placeholder="Motivo del rechazo" required style="max-width:220px">
+              <button class="btn btn-danger-soft btn-sm" type="submit">Rechazar</button>
+            </form>
+          </span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </div>
+</div>
+
+<article class="fx-card mt-3">
+  <h2 class="h5">Decisión</h2>
+  {% if tecnico.estado == "pendiente_aprobacion" %}
+  <div class="d-flex flex-wrap gap-2">
+    <form method="post" action="{% url 'admin_tecnicos' %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="tecnico_id" value="{{ tecnico.pk }}">
+      <input type="hidden" name="accion" value="aprobar">
+      <button class="btn btn-fx" type="submit">Aprobar</button>
+    </form>
+    <button class="btn btn-line" data-bs-toggle="modal" data-bs-target="#modalFicha" data-modo="info">Pedir información</button>
+    <button class="btn btn-danger-soft" data-bs-toggle="modal" data-bs-target="#modalFicha" data-modo="rechazar">Rechazar</button>
+  </div>
+  {% else %}
+  <p class="text-muted small">Ya se decidió sobre este técnico. Si fue un error, puedes devolverlo a revisión conservando todo.</p>
+  <button class="btn btn-line" data-bs-toggle="modal" data-bs-target="#modalFicha" data-modo="reabrir">Reabrir revisión</button>
+  {% endif %}
+</article>
+
+<div class="modal fade" id="modalFicha" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="{% url 'admin_tecnicos' %}">
+      {% csrf_token %}
+      <input type="hidden" name="tecnico_id" value="{{ tecnico.pk }}">
+      <div class="modal-header">
+        <h2 class="modal-title h5">Decisión sobre {{ tecnico.nombre_completo }}</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="accion" id="fichaAccion" value="info">
+        <label class="form-label" for="fichaMotivo">Motivo / información solicitada</label>
+        <textarea class="form-control" id="fichaMotivo" name="motivo" rows="3" maxlength="300"></textarea>
+        <div class="form-text">Obligatorio para rechazar o pedir información; opcional para reabrir.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-line" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-ink">Enviar decisión</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<article class="fx-card mt-3">
+  <h2 class="h5">Reseñas ({{ resenas|length }})</h2>
+  {% for r in resenas %}
+  <div class="border-top pt-2 mt-2 small">
+    <div class="text-warning" aria-label="{{ r.estrellas }} de 5">
+      {% for n in "12345" %}<i class="bi {% if forloop.counter <= r.estrellas %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}
+      <span class="text-muted">({{ r.estrellas }}/5) · {{ r.fecha_creacion|date:"d M Y" }}</span>
+      {% if r.oculta %}<span class="fx-badge">Oculta</span>{% endif %}
+      {% if r.revision_admin %}<span class="fx-badge fx-badge--pendiente">En revisión</span>{% endif %}
+    </div>
+    {% if r.comentario %}<p class="mb-1">{{ r.comentario }}</p>{% endif %}
+    <div class="text-muted">Solicitud #{{ r.solicitud_id }} · {{ r.solicitud.cliente.nombre_completo }}</div>
+  </div>
+  {% empty %}
+  <p class="text-muted mb-0">Aún no tiene reseñas.</p>
+  {% endfor %}
+  <p class="mt-3 mb-0"><a href="{% url 'admin_resenas' %}">Moderar reseñas</a></p>
+</article>
+{% endblock %}
+{% block extra_js %}
+<script>
+(() => {
+  const modal = document.getElementById("modalFicha");
+  if (!modal) return;
+  const accion = document.getElementById("fichaAccion");
+  const motivo = document.getElementById("fichaMotivo");
+  modal.addEventListener("show.bs.modal", (e) => {
+    const modo = (e.relatedTarget && e.relatedTarget.dataset.modo) || "info";
+    accion.value = modo;
+    motivo.required = (modo !== "reabrir");
+  });
+})();
+</script>
+{% endblock %}

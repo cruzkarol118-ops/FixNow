@@ -3,19 +3,28 @@
 {% block content %}
 <div class="d-flex align-items-baseline justify-content-between mb-1">
   <h1 class="h3 mb-0">Técnicos por aprobar</h1>
-  <span class="text-muted" id="conteo" aria-live="polite"></span>
+  <span class="text-muted" aria-live="polite">
+    {% if pendientes|length == 1 %}1 pendiente{% else %}{{ pendientes|length }} pendientes{% endif %}
+  </span>
 </div>
 <p class="text-muted">Ordenados por fecha de registro, los más antiguos primero.</p>
+<p><a href="{% url 'admin_usuarios' %}">Ir a gestión de usuarios (suspender / reactivar)</a></p>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
 
 <div class="row g-3" id="lista">
   {% for t in pendientes %}
-  <div class="col-lg-6" data-tecnico data-nombre="{{ t.nombre }}" data-documento="{{ t.documento }}">
+  <div class="col-lg-6">
     <article class="fx-card h-100 d-flex flex-column">
       <div class="d-flex align-items-center gap-3 mb-3">
-        <div class="fx-avatar" aria-hidden="true">{{ t.nombre|slice:":1" }}</div>
+        <div class="fx-avatar" aria-hidden="true">{{ t.nombre_completo|slice:":1" }}</div>
         <div class="flex-grow-1">
-          <h2 class="h5 fw-bold mb-0">{{ t.nombre }}</h2>
-          <div class="small text-muted">Registrado el {{ t.registro }}</div>
+          <h2 class="h5 fw-bold mb-0"><a href="{% url 'admin_ficha_tecnico' t.pk %}">{{ t.nombre_completo }}</a></h2>
+          <div class="small text-muted">Registrado el {{ t.date_joined|date:"d/m/Y H:i" }}</div>
         </div>
         <span class="fx-badge fx-badge--pendiente">Pendiente</span>
       </div>
@@ -24,114 +33,70 @@
         <dt class="col-5 text-muted fw-normal">Cédula</dt><dd class="col-7 fw-semibold">{{ t.cedula }}</dd>
         <dt class="col-5 text-muted fw-normal">Correo</dt><dd class="col-7 fw-semibold text-break">{{ t.correo }}</dd>
         <dt class="col-5 text-muted fw-normal">Teléfono</dt><dd class="col-7 fw-semibold">{{ t.telefono }}</dd>
-        <dt class="col-5 text-muted fw-normal">Especialidad</dt><dd class="col-7 fw-semibold">{{ t.especialidad }}</dd>
-        <dt class="col-5 text-muted fw-normal">Ciudad</dt><dd class="col-7 fw-semibold mb-0">{{ t.ciudad }}</dd>
+        <dt class="col-5 text-muted fw-normal">Especialidad</dt><dd class="col-7 fw-semibold">{{ t.perfil_tecnico.get_especialidad_display }}</dd>
+        <dt class="col-5 text-muted fw-normal">Ciudad</dt><dd class="col-7 fw-semibold mb-0">{{ t.perfil_tecnico.ciudad }}</dd>
       </dl>
 
-      <button class="btn btn-line btn-sm align-self-start mb-3" data-accion="ver"><i class="bi bi-file-earmark-text"></i> Ver certificación</button>
+      {% if t.motivo_rechazo %}
+      <div class="alert alert-warning small" role="note">Observación previa: {{ t.motivo_rechazo }}</div>
+      {% endif %}
+
+      {% if t.perfil_tecnico.documento_certificacion %}
+      <a class="btn btn-line btn-sm align-self-start mb-3" href="{{ t.perfil_tecnico.documento_certificacion.url }}" target="_blank" rel="noopener">
+        <i class="bi bi-file-earmark-text"></i> Ver certificación
+      </a>
+      {% else %}
+      <p class="small text-muted">Sin documento de certificación adjunto.</p>
+      {% endif %}
 
       <div class="d-flex flex-wrap gap-2 mt-auto">
-        <button class="btn btn-fx flex-fill" data-accion="aprobar">Aprobar</button>
-        <button class="btn btn-line flex-fill" data-accion="info">Pedir información</button>
-        <button class="btn btn-danger-soft flex-fill" data-accion="rechazar">Rechazar</button>
+        <form method="post" action="{% url 'admin_tecnicos' %}" class="flex-fill d-flex">
+          {% csrf_token %}
+          <input type="hidden" name="tecnico_id" value="{{ t.pk }}">
+          <input type="hidden" name="accion" value="aprobar">
+          <button class="btn btn-fx flex-fill" type="submit">Aprobar</button>
+        </form>
+        <button class="btn btn-line flex-fill" data-bs-toggle="modal" data-bs-target="#modalMotivo-{{ t.pk }}" data-modo="info">Pedir información</button>
+        <button class="btn btn-danger-soft flex-fill" data-bs-toggle="modal" data-bs-target="#modalMotivo-{{ t.pk }}" data-modo="rechazar">Rechazar</button>
       </div>
     </article>
   </div>
-  {% endfor %}
-</div>
 
-<div id="vacio" class="fx-card fx-empty" hidden>
-  <i class="bi bi-patch-check"></i>
-  <h3>No hay técnicos pendientes</h3>
-  <p class="text-muted mb-0">Cuando alguien se registre, aparecerá aquí para revisión.</p>
-</div>
-
-{# Modal: rechazar (motivo obligatorio) o pedir más información #}
-<div class="modal fade" id="modalMotivo" tabindex="-1" aria-labelledby="motivoTitulo" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content needs-validation" id="formMotivo" novalidate>
-      <div class="modal-header">
-        <h2 class="modal-title h5" id="motivoTitulo"></h2>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label" for="motivo" id="motivoLabel"></label>
-        <textarea class="form-control" id="motivo" rows="3" maxlength="300" required data-counter="#cuentaMotivo"></textarea>
-        <div class="small text-muted text-end" id="cuentaMotivo"></div>
-        <div class="invalid-feedback">Este campo es obligatorio.</div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-line" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-ink" id="motivoEnviar"></button>
-      </div>
-    </form>
-  </div>
-</div>
-
-{# Modal: vista previa de la certificación #}
-<div class="modal fade" id="modalDoc" tabindex="-1" aria-labelledby="docTitulo" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title h5" id="docTitulo">Certificación</h2>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body text-center py-5 bg-light rounded-3 mx-3 mb-3">
-        <i class="bi bi-file-earmark-pdf fs-1 text-muted"></i>
-        <div class="fw-bold mt-2" id="docNombre"></div>
-        <div class="small text-muted">Aquí se mostrará el archivo cuando exista el backend.</div>
-      </div>
+  {# Modal por técnico: rechazar (motivo obligatorio) o pedir información #}
+  <div class="modal fade" id="modalMotivo-{{ t.pk }}" tabindex="-1" aria-labelledby="motivoTitulo-{{ t.pk }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content" method="post" action="{% url 'admin_tecnicos' %}">
+        {% csrf_token %}
+        <input type="hidden" name="tecnico_id" value="{{ t.pk }}">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="motivoTitulo-{{ t.pk }}">Decisión sobre {{ t.nombre_completo }}</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="accion-{{ t.pk }}">Decisión</label>
+            <select class="form-select" id="accion-{{ t.pk }}" name="accion" required>
+              <option value="info">Pedir más información (sigue pendiente)</option>
+              <option value="rechazar">Rechazar (motivo obligatorio)</option>
+            </select>
+          </div>
+          <label class="form-label" for="motivo-{{ t.pk }}">Motivo / información solicitada</label>
+          <textarea class="form-control" id="motivo-{{ t.pk }}" name="motivo" rows="3" maxlength="300" required></textarea>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-line" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-ink">Enviar decisión</button>
+        </div>
+      </form>
     </div>
   </div>
+  {% empty %}
+  <div class="fx-card fx-empty">
+    <i class="bi bi-patch-check"></i>
+    <h3>No hay técnicos pendientes</h3>
+    <p class="text-muted mb-0">Cuando alguien se registre, aparecerá aquí para revisión.</p>
+  </div>
+  {% endfor %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-(() => {
-  const lista = document.getElementById("lista");
-  const vacio = document.getElementById("vacio");
-  const conteo = document.getElementById("conteo");
-  const modalMotivo = new bootstrap.Modal(document.getElementById("modalMotivo"));
-  const modalDoc = new bootstrap.Modal(document.getElementById("modalDoc"));
-  const form = document.getElementById("formMotivo");
-  let fila = null, tipo = "";
-
-  const contar = () => {
-    const n = lista.querySelectorAll("[data-tecnico]").length;
-    conteo.textContent = n === 1 ? "1 pendiente" : `${n} pendientes`;
-    vacio.hidden = n > 0;
-  };
-
-  lista.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-accion]"); if (!b) return;
-    fila = b.closest("[data-tecnico]"); tipo = b.dataset.accion;
-
-    if (tipo === "ver") {
-      document.getElementById("docNombre").textContent = fila.dataset.documento;
-      return modalDoc.show();
-    }
-    if (tipo === "aprobar") {
-      fxToast(`${fila.dataset.nombre} fue aprobado. Debe activar su disponibilidad.`);
-      fila.remove(); return contar();
-    }
-    const rechazar = tipo === "rechazar";
-    document.getElementById("motivoTitulo").textContent = rechazar ? `Rechazar a ${fila.dataset.nombre}` : "Pedir más información";
-    document.getElementById("motivoLabel").textContent = rechazar ? "Motivo del rechazo" : "¿Qué le falta al técnico?";
-    document.getElementById("motivoEnviar").textContent = rechazar ? "Rechazar técnico" : "Enviar solicitud";
-    form.classList.remove("was-validated"); form.querySelector("#motivo").value = "";
-    modalMotivo.show();
-  });
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (!form.checkValidity()) return;
-    modalMotivo.hide();
-    if (tipo === "rechazar") { fxToast("Técnico rechazado"); fila.remove(); }
-    else { fxToast("Se notificó al técnico lo que le falta"); }
-    contar();
-  });
-  contar();
-})();
-</script>
 {% endblock %}

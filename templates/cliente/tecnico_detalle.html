@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ tecnico.nombre_completo }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'tecnicos' %}">&larr; Volver a técnicos</a></p>
+<article class="fx-card mb-3">
+  <div class="d-flex align-items-center gap-3 mb-2">
+    <div class="fx-avatar fx-avatar--lg" aria-hidden="true">{{ tecnico.nombre_completo|slice:":2"|upper }}</div>
+    <div>
+      <h1 class="h4 mb-0">{{ tecnico.nombre_completo }}</h1>
+      <div class="text-muted"><i class="bi bi-tools"></i> {{ perfil.get_especialidad_display }} · {{ perfil.ciudad }}</div>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-3 align-items-center">
+    <span class="fs-5">
+      {% if perfil.total_calificaciones %}<i class="bi bi-star-fill fx-star"></i> <strong>{{ perfil.calificacion_promedio }}</strong>
+      <span class="text-muted small">({{ perfil.total_calificaciones }} reseña{{ perfil.total_calificaciones|pluralize }})</span>
+      {% else %}<i class="bi bi-star"></i> <span class="text-muted small">Sin calificaciones aún</span>{% endif %}
+    </span>
+    <span class="fx-badge fx-badge--finalizada">Verificado por FixNow</span>
+  </div>
+  <dl class="row small mt-3 mb-0">
+    <dt class="col-5 text-muted fw-normal">Precio de referencia</dt><dd class="col-7 fw-semibold">{{ perfil.precio_referencia_txt }}</dd>
+    <dt class="col-5 text-muted fw-normal">Zona de cobertura</dt><dd class="col-7 fw-semibold">{{ perfil.zona_cobertura|default:"Toda la ciudad" }}</dd>
+    <dt class="col-5 text-muted fw-normal">Servicios finalizados</dt><dd class="col-7 fw-semibold mb-0">{{ n_finalizadas }}</dd>
+  </dl>
+</article>
+
+<h2 class="h5">Lo que dicen sus clientes ({{ resenas|length }})</h2>
+<div class="d-grid gap-3">
+  {% for r in resenas %}
+  <article class="fx-card">
+    <div class="text-warning" aria-label="{{ r.estrellas }} de 5">
+      {% for n in "12345" %}<i class="bi {% if forloop.counter <= r.estrellas %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}
+      <span class="text-muted small">({{ r.estrellas }}/5) · {{ r.fecha_creacion|date:"d M Y" }}</span>
+    </div>
+    {% if r.comentario %}<p class="mt-2 mb-1">{{ r.comentario }}</p>{% endif %}
+    <div class="small text-muted">{{ r.solicitud.cliente.nombre_completo }} · {{ r.solicitud.get_categoria_display }}</div>
+  </article>
+  {% empty %}
+  <div class="fx-card fx-empty">
+    <i class="bi bi-chat-quote"></i>
+    <h3>Aún no tiene reseñas</h3>
+    <p class="text-muted mb-0">Sé el primero en calificarlo después de un servicio.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

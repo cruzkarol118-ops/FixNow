@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mi perfil{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="fx-auth">
+  <h1>Mi perfil</h1>
+  <p class="text-muted">Actualiza tus datos de contacto. Tu dirección se usa para crear solicitudes.</p>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" class="fx-card needs-validation" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label" for="cedula">Cédula</label>
+      <input class="form-control" id="cedula" type="text" value="{{ cliente.cedula }}" readonly disabled>
+      <div class="form-text">La cédula no se puede modificar.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="correo">Correo electrónico</label>
+      <input class="form-control" id="correo" type="email" value="{{ cliente.correo }}" readonly disabled>
+      <div class="form-text">Para cambiar tu correo, contacta a soporte. El cambio de correo con verificación queda pendiente en esta versión.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="nombre_completo">Nombre completo</label>
+      {{ form.nombre_completo }}
+      {% for error in form.nombre_completo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="telefono">Teléfono</label>
+      {{ form.telefono }}
+      {% for error in form.telefono.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="direccion">Dirección</label>
+      {{ form.direccion }}
+      <div class="form-text">Obligatoria: se exige para poder crear solicitudes.</div>
+      {% for error in form.direccion.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento</label>
+      {{ form.fecha_nacimiento }}
+      {% for error in form.fecha_nacimiento.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+
+    {% include "partials/mapa_ubicacion.html" with lat=cliente.latitud lng=cliente.longitud %}
+    {{ form.latitud }}
+    {{ form.longitud }}
+
+    <button class="btn btn-fx btn-lg w-100" type="submit">Guardar cambios</button>
+  </form>
+
+  <p class="text-center mt-4 mb-0"><a class="text-danger" href="{% url 'cuenta_desactivar' %}">Desactivar mi cuenta</a></p>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{% static 'js/ubicacion.js' %}"></script>
+{% endblock %}

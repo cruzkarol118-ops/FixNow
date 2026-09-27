@@ -5,8 +5,42 @@
   <h1>¿Qué se te dañó?</h1>
   <p class="text-muted">Cuéntanos lo básico y te mostramos técnicos disponibles.</p>
 
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  {% if form and form.errors %}
+  <div class="alert alert-danger" role="alert">
+    Revisa el formulario:
+    {% for campo, errores in form.errors.items %}
+      {% for e in errores %}<div>{{ e }}</div>{% endfor %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if errores_fotos %}
+  <div class="alert alert-danger" role="alert">
+    {% for e in errores_fotos %}<div>{{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  {% comment %}Bloque F1: aviso de la categoría sugerida por la IA (no bloquea
+  el envío: puedes cambiarla antes de buscar técnicos).{% endcomment %}
+  {% if aviso_ia %}
+  <div class="alert alert-info" role="alert">{{ aviso_ia }}. Puedes cambiarla antes de enviar.</div>
+  {% endif %}
+
+  {% if dirigido_a %}
+  <div class="alert alert-info" role="alert">
+    La crearás <strong>dirigida a {{ dirigido_a.usuario.nombre_completo }}</strong>
+    ({{ dirigido_a.get_especialidad_display }}): solo él la verá primero y decide si la acepta.
+  </div>
+  {% endif %}
+
   <form method="post" enctype="multipart/form-data" class="fx-card needs-validation" novalidate>
     {% csrf_token %}
+    {% if dirigido_a %}
+    <input type="hidden" name="tecnico_id" value="{{ dirigido_a.usuario.pk }}">
+    {% endif %}
 
     <fieldset class="mb-4">
       <legend class="form-label">Categoría del daño</legend>
@@ -14,7 +48,7 @@
         {% for c in categorias %}
         <div>
           <input type="radio" name="categoria" id="cat-{{ c.id }}" value="{{ c.id }}" required
-                 {% if preseleccion == c.id %}checked{% endif %}>
+                 {% if datos.categoria|default:preseleccion == c.id %}checked{% endif %}>
           <label for="cat-{{ c.id }}"><i class="bi {{ c.icono }}"></i>{{ c.nombre }}</label>
         </div>
         {% endfor %}
@@ -29,13 +63,20 @@
       </div>
       <textarea class="form-control" id="descripcion" name="descripcion" rows="4"
                 minlength="10" maxlength="300" data-counter="#cuenta-desc" required
-                placeholder="Ej: Hay una fuga de agua debajo del lavaplatos y gotea todo el día."></textarea>
+                {% if request.GET.enfocar %}autofocus{% endif %}
+                placeholder="Ej: Hay una fuga de agua debajo del lavaplatos y gotea todo el día.">{{ datos.descripcion|default:"" }}</textarea>
       <div class="invalid-feedback">Describe el problema con al menos 10 caracteres.</div>
+      <div class="form-text">
+        <button type="button" class="btn btn-link btn-sm p-0" id="btn-sugerir">
+          Sugerir categoría con IA
+        </button>
+        según lo que escribas arriba (describe con 3+ palabras para sugerir).
+      </div>
     </div>
 
     <div class="mb-4">
       <label class="form-label" for="direccion">Dirección del servicio</label>
-      <input class="form-control" id="direccion" name="direccion" value="{{ cliente.direccion }}" required>
+      <input class="form-control" id="direccion" name="direccion" value="{{ datos.direccion|default:direccion_perfil }}" required>
       <div class="form-text">La tomamos de tu perfil; puedes cambiarla para este servicio.</div>
       <div class="invalid-feedback">Escribe la dirección donde se hará el servicio.</div>
     </div>
@@ -48,12 +89,28 @@
     </div>
 
     <div class="mb-4">
+      <label class="form-label" for="precio_ofrecido">Precio que ofreces <span class="fw-normal text-muted">(opcional)</span></label>
+      <input class="form-control" type="number" id="precio_ofrecido" name="precio_ofrecido" min="1"
+             value="{{ datos.precio_ofrecido|default:'' }}" placeholder="Ej. 60000">
+      <div class="form-text">Lo que estás dispuesto a pagar. Vacío = el técnico propone al finalizar.</div>
+    </div>
+
+    <div class="mb-4">
+      <div class="form-check form-switch fx-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="visible_tecnicos" name="visible_tecnicos"
+               {% if visible_checked %}checked{% endif %}>
+        <label class="form-check-label" for="visible_tecnicos">Visible para técnicos</label>
+      </div>
+      <div class="form-text">Apagada = privada: no sale en su mapa y la diriges tú a quien elijas.</div>
+    </div>
+
+    <div class="mb-4">
       <span class="form-label d-block">Urgencia</span>
       <div class="fx-seg" role="radiogroup" aria-label="Urgencia" id="urgencia">
-        <button type="button" class="is-on" role="radio" aria-checked="true" data-valor="normal">Normal</button>
-        <button type="button" role="radio" aria-checked="false" data-valor="urgente">Urgente</button>
+        <button type="button" class="{% if datos.urgencia|default:'normal' == 'normal' %}is-on{% endif %}" role="radio" aria-checked="{% if datos.urgencia|default:'normal' == 'normal' %}true{% else %}false{% endif %}" data-valor="normal">Normal</button>
+        <button type="button" class="{% if datos.urgencia == 'urgente' %}is-on{% endif %}" role="radio" aria-checked="{% if datos.urgencia == 'urgente' %}true{% else %}false{% endif %}" data-valor="urgente">Urgente</button>
       </div>
-      <input type="hidden" name="urgencia" id="urgencia-valor" value="normal">
+      <input type="hidden" name="urgencia" id="urgencia-valor" value="{{ datos.urgencia|default:'normal' }}">
     </div>
 
     <button class="btn btn-fx btn-lg w-100" type="submit">Buscar técnicos</button>
@@ -71,6 +128,22 @@
       const on = x === b; x.classList.toggle("is-on", on); x.setAttribute("aria-checked", on);
     });
     document.getElementById("urgencia-valor").value = b.dataset.valor;
+  });
+  // Bloque F1: pide la sugerencia al endpoint liviano sin perder lo escrito.
+  document.getElementById("btn-sugerir").addEventListener("click", async () => {
+    const texto = document.getElementById("descripcion").value.trim();
+    if (texto.length < 4) return;
+    const url = "{% url 'sugerir_categoria' %}?texto=" + encodeURIComponent(texto);
+    try {
+      const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+      const datos = await resp.json();
+      if (datos.categoria) {
+        const radio = document.querySelector('input[name=categoria][value="' + datos.categoria + '"]');
+        if (radio) radio.checked = true;
+      }
+    } catch (e) { /* sin IA el formulario sigue funcionando igual */ }
+    // Recarga con ?sugerir=1 para mostrar el aviso "IA sugiere: X".
+    window.location = "{% url 'solicitud_nueva' %}?sugerir=1&texto=" + encodeURIComponent(texto);
   });
   // Los radios required ya validan solos; mostramos el aviso si falta la categoría
   document.querySelector("form.needs-validation").addEventListener("submit", () => {

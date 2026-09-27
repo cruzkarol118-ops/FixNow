@@ -1,106 +1,86 @@
 {% extends "base.html" %}
 {% block title %}Solicitudes{% endblock %}
 {% block content %}
-{# Disponibilidad (FN-10) #}
+{# Disponibilidad (FN-10): POST real a tecnico_disponibilidad #}
 <div class="fx-card d-flex align-items-center justify-content-between gap-3 mb-4" id="cardDisp">
   <div>
-    <div class="fw-bold" id="dispTitulo">Estás disponible</div>
-    <div class="text-muted small" id="dispTexto">Los clientes cercanos pueden elegirte.</div>
+    <div class="fw-bold" id="dispTitulo">{% if perfil.disponible %}Estás disponible{% else %}Estás en pausa{% endif %}</div>
+    <div class="text-muted small" id="dispTexto">{% if perfil.disponible %}Los clientes cercanos pueden elegirte.{% else %}No apareces en las búsquedas de los clientes.{% endif %}</div>
   </div>
-  <div class="form-check form-switch m-0">
-    <input class="form-check-input" type="checkbox" role="switch" id="disponibilidad" checked aria-label="Disponibilidad">
-  </div>
+  <form method="post" action="{% url 'tecnico_disponibilidad' %}" class="m-0">
+    {% csrf_token %}
+    <div class="form-check form-switch m-0">
+      <input class="form-check-input" type="checkbox" role="switch" id="disponibilidad"
+             name="disponible" value="1" {% if perfil.disponible %}checked{% endif %}
+             onchange="this.form.submit()" aria-label="Disponibilidad">
+    </div>
+  </form>
 </div>
 
 <div class="d-flex align-items-baseline justify-content-between mb-3">
   <h1 class="h3 mb-0">Solicitudes pendientes</h1>
-  <span class="text-muted" id="conteo" aria-live="polite"></span>
+  <span class="text-muted" id="conteo" aria-live="polite">
+    {% if solicitudes|length == 1 %}1 solicitud{% else %}{{ solicitudes|length }} solicitudes{% endif %}
+  </span>
 </div>
 
-<div id="pausa" class="fx-card fx-empty" hidden>
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+{% if not perfil.disponible %}
+<div id="pausa" class="fx-card fx-empty">
   <i class="bi bi-pause-circle"></i>
   <h3>Estás en pausa</h3>
   <p class="text-muted mb-0">No recibirás solicitudes nuevas hasta que actives tu disponibilidad. Los servicios que ya tienes en curso siguen igual.</p>
 </div>
+{% endif %}
 
-<div class="row g-3" id="bandeja">
+<div class="row g-3" id="bandeja" {% if not perfil.disponible %}hidden{% endif %}>
   {% for s in solicitudes %}
   <div class="col-lg-6" data-solicitud>
     <article class="fx-card h-100 d-flex flex-column">
       <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
         <div class="d-flex align-items-center gap-2">
-          <div class="fx-avatar fx-avatar--sm" aria-hidden="true">{{ s.cliente|slice:":1" }}</div>
+          <div class="fx-avatar fx-avatar--sm" aria-hidden="true">{{ s.cliente.nombre_completo|slice:":1" }}</div>
           <div>
-            <div class="fw-bold">{{ s.cliente }}</div>
-            <div class="small text-muted">{{ s.fecha }}</div>
+            <div class="fw-bold">#{{ s.pk }} · {{ s.cliente.nombre_completo }}</div>
+            <div class="small text-muted">{{ s.fecha_creacion|date:"d/m/Y H:i" }}</div>
           </div>
         </div>
-        {% if s.urgente %}<span class="fx-badge fx-badge--urgente"><i class="bi bi-exclamation-triangle-fill"></i> Urgente</span>{% endif %}
+        {% if s.urgencia == "urgente" %}<span class="fx-badge fx-badge--urgente"><i class="bi bi-exclamation-triangle-fill"></i> Urgente</span>{% endif %}
       </div>
 
-      <div class="fw-bold mb-1"><i class="bi {{ s.icono }}"></i> {{ s.categoria }}</div>
+      <div class="fw-bold mb-1"><i class="bi {{ s.icono }}"></i> {{ s.get_categoria_display }}</div>
       <p class="mb-2">{{ s.descripcion }}</p>
       <div class="small text-muted mb-2"><i class="bi bi-geo-alt-fill"></i> {{ s.direccion }}</div>
 
-      {% if s.fotos %}
-      <div class="d-flex gap-2 mb-2" aria-label="{{ s.fotos }} foto(s) adjunta(s)">
-        {% for f in ""|ljust:s.fotos %}
-        <div class="d-grid place-items-center rounded-3 bg-light border" style="width:64px;height:64px;place-items:center"><i class="bi bi-image text-muted"></i></div>
-        {% endfor %}
-      </div>
+      {% if s.fotos.all %}
+      <div class="small text-muted mb-2"><i class="bi bi-image"></i> {{ s.fotos.all|length }} foto(s) adjunta(s)</div>
       {% endif %}
 
       <div class="d-flex gap-2 mt-auto pt-2">
-        <button class="btn btn-line flex-fill" data-accion="rechazar">Rechazar</button>
-        <button class="btn btn-fx flex-fill" data-accion="aceptar">Aceptar</button>
+        <form method="post" action="{% url 'tecnico_rechazar' s.pk %}" class="flex-fill">
+          {% csrf_token %}
+          <button class="btn btn-line w-100" type="submit">Rechazar</button>
+        </form>
+        <form method="post" action="{% url 'tecnico_aceptar' s.pk %}" class="flex-fill">
+          {% csrf_token %}
+          <button class="btn btn-fx w-100" type="submit">Aceptar</button>
+        </form>
       </div>
     </article>
   </div>
   {% endfor %}
 </div>
 
-<div id="sinSolicitudes" class="fx-card fx-empty" hidden>
+{% if not solicitudes %}
+<div id="sinSolicitudes" class="fx-card fx-empty">
   <i class="bi bi-inbox"></i>
   <h3>No hay solicitudes por ahora</h3>
-  <p class="text-muted mb-0">Cuando un cliente de tu especialidad te elija, aparecerá aquí.</p>
+  <p class="text-muted mb-0">Cuando un cliente de tu especialidad cree una solicitud, aparecerá aquí.</p>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-(() => {
-  const bandeja = document.getElementById("bandeja");
-  const conteo = document.getElementById("conteo");
-  const vacio = document.getElementById("sinSolicitudes");
-  const pausa = document.getElementById("pausa");
-  const sw = document.getElementById("disponibilidad");
-
-  function contar() {
-    const n = bandeja.querySelectorAll("[data-solicitud]").length;
-    conteo.textContent = n === 1 ? "1 solicitud" : `${n} solicitudes`;
-    vacio.hidden = n > 0 || !sw.checked;
-  }
-
-  // Aceptar / rechazar (FN-11)
-  bandeja.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-accion]"); if (!b) return;
-    const col = b.closest("[data-solicitud]");
-    col.remove();
-    fxToast(b.dataset.accion === "aceptar" ? "Solicitud aceptada. Quedó en curso." : "Solicitud rechazada.");
-    contar();
-  });
-
-  // Disponibilidad (FN-10)
-  sw.addEventListener("change", () => {
-    const on = sw.checked;
-    document.getElementById("dispTitulo").textContent = on ? "Estás disponible" : "Estás en pausa";
-    document.getElementById("dispTexto").textContent = on ? "Los clientes cercanos pueden elegirte." : "No apareces en las búsquedas de los clientes.";
-    bandeja.hidden = !on;
-    pausa.hidden = on;
-    contar();
-    fxToast(on ? "Disponibilidad activada" : "Disponibilidad pausada");
-  });
-  contar();
-})();
-</script>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mi perfil profesional{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="fx-auth">
+  <h1>Mi perfil profesional</h1>
+  <p class="text-muted">Actualiza los datos que ven los clientes al buscar técnicos.</p>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="fx-card needs-validation" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label">Cédula</label>
+      <input class="form-control" type="text" value="{{ tecnico.cedula }}" readonly disabled>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Correo electrónico</label>
+      <input class="form-control" type="email" value="{{ tecnico.correo }}" readonly disabled>
+      <div class="form-text">La cédula, el correo, el rol, el estado y tu calificación no son editables.</div>
+    </div>
+    <dl class="row small mb-3">
+      <dt class="col-5 text-muted fw-normal">Estado</dt><dd class="col-7 fw-semibold">{{ tecnico.get_estado_display }}</dd>
+      <dt class="col-5 text-muted fw-normal">Calificación</dt><dd class="col-7 fw-semibold">{{ perfil.calificacion_promedio }} ({{ perfil.total_calificaciones }})</dd>
+    </dl>
+
+    <div class="mb-3">
+      <label class="form-label" for="nombre_completo">Nombre completo</label>
+      {{ form.nombre_completo }}
+      {% for error in form.nombre_completo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="telefono">Teléfono</label>
+      {{ form.telefono }}
+      {% for error in form.telefono.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="especialidad">Especialidad</label>
+      {{ form.especialidad }}
+      {% for error in form.especialidad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="ciudad">Ciudad</label>
+      {{ form.ciudad }}
+      {% for error in form.ciudad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="precio_referencia">Precio de referencia</label>
+      {{ form.precio_referencia }}
+      <div class="form-text">Déjalo vacío para mostrar “a convenir”.</div>
+      {% for error in form.precio_referencia.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="zona_cobertura">Zona de cobertura</label>
+      {{ form.zona_cobertura }}
+      {% for error in form.zona_cobertura.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="foto_perfil">Foto de perfil</label>
+      {% if perfil.foto_perfil %}
+      <div class="mb-2"><img src="{{ perfil.foto_perfil.url }}" alt="Foto de perfil actual" class="rounded" style="max-width:120px"></div>
+      {% endif %}
+      {{ form.foto_perfil }}
+      {% for error in form.foto_perfil.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+
+    {% include "partials/mapa_ubicacion.html" with lat=tecnico.latitud lng=tecnico.longitud %}
+    {{ form.latitud }}
+    {{ form.longitud }}
+
+    <button class="btn btn-fx btn-lg w-100" type="submit">Guardar cambios</button>
+  </form>
+
+  <article class="fx-card mt-3">
+    <h2 class="h5">Otros certificados ({{ tecnico.perfil_tecnico.documentos.count }})</h2>
+    <p class="text-muted small">Suma diplomas o cursos de otras áreas. El admin los ve al revisarte.</p>
+    <ul class="list-unstyled d-grid gap-2 mb-3">
+      {% for d in tecnico.perfil_tecnico.documentos.all %}
+      <li class="d-flex justify-content-between align-items-center gap-2">
+        <span>
+          <a class="btn btn-line btn-sm" href="{{ d.archivo.url }}" target="_blank" rel="noopener">
+            <i class="bi bi-file-earmark-text"></i> {{ d.nombre }}
+          </a>
+          <span class="small text-muted">{{ d.get_especialidad_display }} · {{ d.get_estado_display }}</span>
+        </span>
+        <form method="post" action="{% url 'documento_eliminar' d.pk %}" class="m-0">
+          {% csrf_token %}
+          <button class="btn btn-line btn-sm" type="submit"
+                  onclick="return confirm('¿Eliminar este documento?');">Quitar</button>
+        </form>
+      </li>
+      {% empty %}
+      <li class="text-muted small">Aún no agregas otros certificados.</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'documento_agregar' %}" enctype="multipart/form-data" class="d-grid gap-2">
+      {% csrf_token %}
+      <label class="form-label" for="doc_nombre">Nombre del certificado</label>
+      <input class="form-control" type="text" id="doc_nombre" name="nombre" maxlength="120" required
+             placeholder="Ej. Diplomado en redes eléctricas">
+      <label class="form-label" for="doc_especialidad">¿A qué habilidad acredita?</label>
+      <select class="form-select" id="doc_especialidad" name="especialidad" required>
+        <option value="plomeria">Plomería</option>
+        <option value="electricidad">Electricidad</option>
+        <option value="cerrajeria">Cerrajería</option>
+        <option value="electrodomesticos">Electrodomésticos</option>
+        <option value="otro" selected>Otro</option>
+      </select>
+      <div class="form-text">Si el admin la aprueba, te encontrarán también en esa categoría.</div>
+      <label class="form-label" for="doc_archivo">Archivo (PDF o imagen, máx 5MB)</label>
+      <input class="form-control" type="file" id="doc_archivo" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required>
+      <button class="btn btn-line" type="submit">Agregar certificado</button>
+    </form>
+  </article>
+
+  <p class="text-center mt-4 mb-0"><a class="text-danger" href="{% url 'tecnico_desactivar' %}">Desactivar mi cuenta</a></p>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{% static 'js/ubicacion.js' %}"></script>
+{% endblock %}
