@@ -7,3 +7,6 @@ tzdata==2026.4
 scikit-learn
 rapidfuzz
 nltk
+python-decouple
+gunicorn
+whitenoise
