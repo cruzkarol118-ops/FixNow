@@ -9,6 +9,27 @@ function fxToast(mensaje) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // ---- Filtros silenciosos en vivo (sin texto extra: el campo no acepta
+  // lo inválido y el backend explica al enviar si algo falta) ----
+  const FILTROS = {
+    digitos: /[^0-9]/g,
+    telefono: /[^0-9+\s\-()]/g,
+    letras: /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]/g,
+  };
+  document.querySelectorAll("input[data-filtrar]").forEach((input) => {
+    const rx = FILTROS[input.dataset.filtrar];
+    if (!rx) return;
+    input.addEventListener("input", () => {
+      const limpio = input.value.replace(rx, "");
+      if (limpio !== input.value) input.value = limpio;
+    });
+  });
+
+  // ---- Fechas: nada futuro donde aplique (nacimiento) ----
+  document.querySelectorAll('input[type="date"][data-max-hoy]').forEach((input) => {
+    input.max = new Date().toISOString().slice(0, 10);
+  });
+
   // ---- Carrusel genérico: flechas ‹ › + arrastre con mouse ----
   document.querySelectorAll("[data-carrusel]").forEach((sc) => {
     const caja = sc.closest(".fx-carrusel");

@@ -32,7 +32,12 @@
     <div class="mb-3">
       <label class="form-label" for="correo">Correo electrónico</label>
       <input class="form-control" id="correo" type="email" value="{{ cliente.correo }}" readonly disabled>
-      <div class="form-text">Para cambiar tu correo, contacta a soporte. El cambio de correo con verificación queda pendiente en esta versión.</div>
+      <div class="form-text">Para cambiarlo, digita el nuevo correo abajo: te pediremos confirmar el cambio con un código y tu contraseña.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="correo_nuevo">Nuevo correo (opcional)</label>
+      {{ form.correo_nuevo }}
+      {% for error in form.correo_nuevo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
     </div>
     <div class="mb-3">
       <label class="form-label" for="nombre_completo">Nombre completo</label>
@@ -62,6 +67,32 @@
 
     <button class="btn btn-fx btn-lg w-100" type="submit">Guardar cambios</button>
   </form>
+
+  {% if pendiente_correo %}
+  {# CP-FN2-12: confirmación del cambio de correo pendiente #}
+  <form method="post" class="fx-card mt-3" novalidate>
+    {% csrf_token %}
+    <h2 class="h5">Confirma tu cambio de correo</h2>
+    <p class="text-muted small mb-2">
+      Nuevo correo propuesto: <strong>{{ pendiente_correo.correo }}</strong>.
+      Tu correo actual (<strong>{{ cliente.correo }}</strong>) sigue activo hasta que confirmes.
+    </p>
+    <p class="small">
+      Código de verificación enviado a tu nuevo correo (simulado):
+      <strong class="fs-5">{{ pendiente_correo.codigo }}</strong>
+    </p>
+    <div class="mb-3">
+      <label class="form-label" for="codigo">Código de verificación</label>
+      <input class="form-control" id="codigo" name="codigo" inputmode="numeric" maxlength="6" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="password">Tu contraseña actual</label>
+      <input class="form-control" id="password" name="password" type="password" required>
+    </div>
+    <input type="hidden" name="confirmar_correo" value="1">
+    <button class="btn btn-fx w-100" type="submit">Confirmar cambio de correo</button>
+  </form>
+  {% endif %}
 
   <p class="text-center mt-4 mb-0"><a class="text-danger" href="{% url 'cuenta_desactivar' %}">Desactivar mi cuenta</a></p>
 </div>

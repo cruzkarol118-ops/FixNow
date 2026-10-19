@@ -9,7 +9,7 @@ from django.db import transaction
 from .models import (
     Categoria, DocumentoTecnico, Pago, PerfilTecnico, Solicitud, Usuario,
 )
-from .validators import validar_certificacion, validar_foto
+from .validators import validar_certificacion, validar_foto, validar_nombre, validar_telefono
 
 ATRS_TEXTO = "form-control"
 ATRS_CHECK = "form-check-input"
@@ -88,16 +88,19 @@ class RegistroClienteForm(forms.ModelForm):
         widgets = {
             "cedula": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "cedula", "inputmode": "numeric",
-                "maxlength": "10", "autocomplete": "off",
+                "maxlength": "10", "minlength": "6", "pattern": "[0-9]*",
+                "data-filtrar": "digitos", "autocomplete": "off",
             }),
             "nombre_completo": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "nombre_completo", "autocomplete": "name",
+                "data-filtrar": "letras",
             }),
             "correo": forms.EmailInput(attrs={
                 "class": ATRS_TEXTO, "id": "correo", "autocomplete": "email",
             }),
             "telefono": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "telefono", "autocomplete": "tel",
+                "data-filtrar": "telefono",
             }),
         }
         error_messages = {
@@ -161,16 +164,19 @@ class RegistroTecnicoForm(forms.ModelForm):
         widgets = {
             "cedula": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "cedula", "inputmode": "numeric",
-                "maxlength": "10", "autocomplete": "off",
+                "maxlength": "10", "minlength": "6", "pattern": "[0-9]*",
+                "data-filtrar": "digitos", "autocomplete": "off",
             }),
             "nombre_completo": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "nombre_completo", "autocomplete": "name",
+                "data-filtrar": "letras",
             }),
             "correo": forms.EmailInput(attrs={
                 "class": ATRS_TEXTO, "id": "correo", "autocomplete": "email",
             }),
             "telefono": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "telefono", "autocomplete": "tel",
+                "data-filtrar": "telefono",
             }),
         }
         error_messages = {
@@ -233,11 +239,20 @@ class CambioPasswordForm(PasswordChangeForm):
 class PerfilClienteForm(forms.ModelForm):
     """B1 / FN-2: el cliente edita nombre, teléfono, dirección y fecha de nacimiento.
 
-    La cédula y el correo NO son editables (se muestran como solo lectura en el
-    template). El cambio de correo queda pendiente con verificación por correo;
-    en esta versión el template indica "contacta a soporte".
+    La cédula NO es editable (se muestra como solo lectura en el template).
+    El correo tampoco se reemplaza directamente: si el cliente digita un
+    `correo_nuevo`, la vista exige una confirmación (código + contraseña)
+    antes de reemplazarlo (CP-FN2-12/13).
     La dirección es obligatoria: FN-3 la exige para crear solicitudes.
     """
+
+    correo_nuevo = forms.EmailField(
+        label="Nuevo correo (opcional)", required=False,
+        help_text="Si lo diligencias, te pediremos confirmar el cambio antes de aplicarlo.",
+        widget=forms.EmailInput(attrs={
+            "class": ATRS_TEXTO, "id": "correo_nuevo", "autocomplete": "email",
+        }),
+    )
 
     class Meta:
         model = Usuario
@@ -246,15 +261,18 @@ class PerfilClienteForm(forms.ModelForm):
         widgets = {
             "nombre_completo": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "nombre_completo", "autocomplete": "name",
+                "data-filtrar": "letras",
             }),
             "telefono": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "telefono", "autocomplete": "tel",
+                "data-filtrar": "telefono",
             }),
             "direccion": forms.TextInput(attrs={
                 "class": ATRS_TEXTO, "id": "direccion", "autocomplete": "street-address",
             }),
             "fecha_nacimiento": forms.DateInput(attrs={
                 "class": ATRS_TEXTO, "id": "fecha_nacimiento", "type": "date",
+                "data-max-hoy": "1",
             }),
             # La ubicación se elige en el mapa del perfil (selector visual);
             # el usuario nunca digita coordenadas.
@@ -266,6 +284,15 @@ class PerfilClienteForm(forms.ModelForm):
         datos = super().clean()
         _validar_coords(datos)
         return datos
+
+    def clean_correo_nuevo(self):
+        """CP-FN2-13: el correo nuevo no puede pertenecer a otro usuario."""
+        correo = (self.cleaned_data.get("correo_nuevo") or "").strip()
+        if correo and Usuario.objects.filter(correo__iexact=correo).exclude(
+                pk=self.instance.pk).exists():
+            raise ValidationError(
+                "Ya existe una cuenta registrada con este correo.")
+        return correo
 
     def clean_direccion(self):
         direccion = (self.cleaned_data.get("direccion") or "").strip()
@@ -290,12 +317,23 @@ class PerfilTecnicoForm(forms.Form):
     """
 
     nombre_completo = forms.CharField(
-        label="Nombre completo", max_length=150,
-        widget=forms.TextInput(attrs={"class": ATRS_TEXTO, "id": "nombre_completo"}),
+        label="Nombre completo", max_length=100,
+        validators=[validar_nombre],
+        error_messages={
+            "required": "El nombre es obligatorio.",
+            "max_length": "El nombre no puede pasar de 100 caracteres.",
+        },
+        widget=forms.TextInput(attrs={
+            "class": ATRS_TEXTO, "id": "nombre_completo",
+            "data-filtrar": "letras"}),
     )
     telefono = forms.CharField(
         label="Teléfono", max_length=20,
-        widget=forms.TextInput(attrs={"class": ATRS_TEXTO, "id": "telefono"}),
+        validators=[validar_telefono],
+        error_messages={"required": "El teléfono es obligatorio."},
+        widget=forms.TextInput(attrs={
+            "class": ATRS_TEXTO, "id": "telefono",
+            "data-filtrar": "telefono"}),
     )
     especialidad = forms.ChoiceField(
         label="Especialidad", choices=Categoria.choices,
@@ -309,14 +347,15 @@ class PerfilTecnicoForm(forms.Form):
         label="Precio de referencia", max_digits=10, decimal_places=0,
         required=False,
         help_text="Déjalo vacío para mostrar “a convenir”.",
-        widget=forms.NumberInput(attrs={"class": ATRS_TEXTO, "id": "precio_referencia", "min": "0"}),
+        widget=forms.NumberInput(attrs={"class": ATRS_TEXTO, "id": "precio_referencia", "min": "1"}),
     )
     zona_cobertura = forms.CharField(
-        label="Zona de cobertura", max_length=255, required=False,
+        label="Zona de cobertura", max_length=255,
+        error_messages={"required": "La zona de cobertura es obligatoria."},
         widget=forms.TextInput(attrs={"class": ATRS_TEXTO, "id": "zona_cobertura"}),
     )
     foto_perfil = forms.ImageField(
-        label="Foto de perfil", required=False,
+        label="Foto de perfil", required=False, validators=[validar_foto],
         widget=forms.ClearableFileInput(attrs={"class": ATRS_TEXTO, "id": "foto_perfil", "accept": "image/*"}),
     )
     # Ubicación por mapa (selector visual; el usuario nunca digita coords).
@@ -330,9 +369,10 @@ class PerfilTecnicoForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean_precio_referencia(self):
+        """CP-FN9-03/04: el precio, si se define, debe ser mayor que cero."""
         precio = self.cleaned_data.get("precio_referencia")
-        if precio is not None and precio < 0:
-            raise ValidationError("El precio no puede ser negativo.")
+        if precio is not None and precio <= 0:
+            raise ValidationError("El precio no puede ser cero ni negativo.")
         return precio
 
     def clean(self):
@@ -477,7 +517,7 @@ class PagoSimuladoForm(forms.Form):
         help_text="Solo los últimos 4, para la demo. Nunca escribas el número completo ni el CVV.",
         widget=forms.TextInput(attrs={
             "class": ATRS_TEXTO, "id": "ultimos4", "inputmode": "numeric",
-            "maxlength": "4", "placeholder": "1234",
+            "maxlength": "4", "placeholder": "1234", "data-filtrar": "digitos",
         }),
     )
     resultado = forms.ChoiceField(

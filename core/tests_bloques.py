@@ -93,13 +93,38 @@ class BloqueATest(_Base):
         self.assertEqual(resp.status_code, 200)  # no hay redirect: no entró
 
 
+# ---------- Validación de nombre según documentos (FN-1/FN-2/FN-8/FN-9) ----------
+class NombreValidationTest(_Base):
+    def _registro(self, **cambios):
+        datos = {
+            "cedula": "1098765432", "nombre_completo": "María Fernanda Rojas",
+            "correo": "nuevo@test.co", "telefono": "3001234567",
+            "password": "Clave123!", "password2": "Clave123!", "terminos": "on",
+        }
+        datos.update(cambios)
+        return self.client.post(reverse("registro_cliente"), datos)
+
+    def test_nombre_valido_pasa(self):
+        resp = self._registro()
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Usuario.objects.filter(correo="nuevo@test.co").exists())
+
+    def test_nombre_corto_o_con_numeros_rebota(self):
+        for nombre in ("Li", "Juan123", "!!!"):
+            resp = self._registro(
+                nombre_completo=nombre,
+                correo=f"n{abs(hash(nombre)) % 100000}@test.co")
+            self.assertEqual(resp.status_code, 200)
+            self.assertFalse(Usuario.objects.filter(nombre_completo=nombre).exists())
+
+
 # ---------- Bloque B: perfiles y administración ----------
 class BloqueBTest(_Base):
     def test_editar_perfil_cliente_persiste(self):
         cli = self._cliente()
         self.client.force_login(cli)
         resp = self.client.post(reverse("cliente_perfil"), {
-            "nombre_completo": "Prueba cli@test.co", "telefono": "3111111111",
+            "nombre_completo": "Prueba Cliente", "telefono": "3111111111",
             "direccion": "Cl 63 #9-15", "fecha_nacimiento": "1990-01-01",
         })
         self.assertEqual(resp.status_code, 302)

@@ -5,13 +5,15 @@ Uso:
     .\\.venv\\Scripts\\python.exe manage.py seed_demo --help
 
 Crea (borrando antes cualquier dato demo previo, por eso es idempotente):
-    - 1 admin: admin@fixnow.co (staff + superuser)
-    - 2 clientes demo (cliente1/cliente2@demo.fixnow.co)
+    - 1 admin: admin@test.co (staff + superuser)
+    - 2 clientes demo (cliente1/cliente2@test.co)
     - 3 técnicos demo activos y disponibles, con perfil y coords de Bogotá
+    - 1 suspendido demo (susp@test.co, para probar el bloqueo de login)
     - 3 solicitudes demo en distintos estados (pendiente, en_curso, finalizada)
     - 1 calificación (5★ sobre la finalizada)
 
-Contraseña de TODOS: Demo123!
+Contraseña de TODOS: Clave123!
+También purga los correos del seed anterior (*@demo.fixnow.co) si existen.
 NO se corre contra fixnow_db salvo que quieras ensuciarla: para probar y
 limpiar después, borra los usuarios demo desde /admin/ o con flush.
 """
@@ -26,50 +28,63 @@ from core.models import (
     Calificacion, Notificacion, Pago, PerfilTecnico, Solicitud, Usuario,
 )
 
-PASSWORD_DEMO = "Demo123!"
+PASSWORD_DEMO = "Clave123!"
 
-ADMIN_CORREO = "admin@fixnow.co"
+ADMIN_CORREO = "admin@test.co"
+SUSP_CORREO = "susp@test.co"
 CLIENTES = [
-    ("cliente1@demo.fixnow.co", "Demo Cliente Uno", "70000001", "Cra 13 #52-40",
+    ("cliente1@test.co", "Demo Cliente Uno", "70000001", "Cra 13 #52-40",
      4.6486, -74.0628),
-    ("cliente2@demo.fixnow.co", "Demo Cliente Dos", "70000002", "Cl 63 #9-15",
+    ("cliente2@test.co", "Demo Cliente Dos", "70000002", "Cl 63 #9-15",
      4.6560, -74.0590),
 ]
 TECNICOS = [
-    ("tecnico1@demo.fixnow.co", "Demo Tecnico Plomero", "70000011", "plomeria",
+    ("tecnico1@test.co", "Demo Tecnico Plomero", "70000011", "plomeria",
      60000, 4.6510, -74.0610),
-    ("tecnico2@demo.fixnow.co", "Demo Tecnica Electrica", "70000012", "electricidad",
+    ("tecnico2@test.co", "Demo Tecnica Electrica", "70000012", "electricidad",
      55000, 4.6420, -74.0700),
-    ("tecnico3@demo.fixnow.co", "Demo Tecnico Cerrajero", "70000013", "cerrajeria",
+    ("tecnico3@test.co", "Demo Tecnico Cerrajero", "70000013", "cerrajeria",
      50000, 4.6690, -74.0520),
 ]
-CORREOS_DEMO = [ADMIN_CORREO] + [c[0] for c in CLIENTES] + [t[0] for t in TECNICOS]
+CORREOS_DEMO = (
+    [ADMIN_CORREO, SUSP_CORREO]
+    + [c[0] for c in CLIENTES] + [t[0] for t in TECNICOS]
+)
+# Seed anterior (dominio demo.fixnow.co): se purga si quedó de una corrida vieja.
+CORREOS_LEGACY = [
+    "admin@fixnow.co",
+    "cliente1@demo.fixnow.co", "cliente2@demo.fixnow.co",
+    "tecnico1@demo.fixnow.co", "tecnico2@demo.fixnow.co",
+    "tecnico3@demo.fixnow.co",
+]
 
 
 class Command(BaseCommand):
     help = (
-        "Carga datos demo idempotentes (admin@fixnow.co, 2 clientes, "
-        "3 técnicos, 3 solicitudes, 1 calificación; clave Demo123!). "
-        "Si ya existen, los borra y recrea."
+        "Carga datos demo idempotentes (admin@test.co, 2 clientes, "
+        "3 técnicos, 1 suspendido, 3 solicitudes, 1 calificación; "
+        "clave Clave123!). Si ya existen, los borra y recrea."
     )
 
     def handle(self, *args, **options):
         with transaction.atomic():
             self._borrar_previos()
             admin = self._crear_admin()
+            self._crear_suspendido()
             clientes = [self._crear_cliente(*datos) for datos in CLIENTES]
             tecnicos = [self._crear_tecnico(*datos) for datos in TECNICOS]
             solicitudes = self._crear_solicitudes(clientes, tecnicos)
             self._crear_calificacion(solicitudes[2])
         self.stdout.write(self.style.SUCCESS(
-            "Demo lista: admin@fixnow.co, cliente1/cliente2@demo.fixnow.co, "
-            "tecnico1/2/3@demo.fixnow.co (clave Demo123! para todos). "
+            "Demo lista: admin@test.co, cliente1/cliente2@test.co, "
+            "tecnico1/2/3@test.co, susp@test.co (clave Clave123! para todos). "
             f"Admin panel: {admin.correo}."
         ))
 
     # ---- limpieza previa (idempotencia) ----
     def _borrar_previos(self):
-        demo = Usuario.objects.filter(correo__in=CORREOS_DEMO)
+        demo = Usuario.objects.filter(
+            correo__in=CORREOS_DEMO + CORREOS_LEGACY)
         # Pago protege a Solicitud: se borra primero (su Comision cae en cascada).
         Pago.objects.filter(
             solicitud__cliente__in=demo).delete()
@@ -85,6 +100,16 @@ class Command(BaseCommand):
             cedula="70000000", nombre_completo="Demo Admin",
             telefono="3000000000",
         )
+
+    def _crear_suspendido(self):
+        usuario = Usuario.objects.create_user(
+            correo=SUSP_CORREO, password=PASSWORD_DEMO, cedula="70000003",
+            nombre_completo="Demo Suspendido", telefono="3000000000",
+            rol=Usuario.Rol.CLIENTE, estado=Usuario.Estado.ACTIVO,
+            direccion="Cra 13 #52-40",
+        )
+        usuario.suspender("Cuenta suspendida para la demo (probar bloqueo).")
+        return usuario
 
     def _crear_cliente(self, correo, nombre, cedula, direccion, lat, lng):
         usuario = Usuario.objects.create_user(

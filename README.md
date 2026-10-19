@@ -37,16 +37,17 @@ Carga datos de prueba idempotentes (si ya existen, los borra y recrea):
 .\.venv\Scripts\python.exe manage.py seed_demo
 ```
 
-Todos usan la contraseña **`Demo123!`**:
+Todos usan la contraseña **`Clave123!`**:
 
 | Usuario | Correo | Rol |
 |---|---|---|
-| Admin | admin@fixnow.co | administrador (staff) |
-| Cliente 1 | cliente1@demo.fixnow.co | cliente |
-| Cliente 2 | cliente2@demo.fixnow.co | cliente |
-| Técnico 1 | tecnico1@demo.fixnow.co | plomería |
-| Técnico 2 | tecnico2@demo.fixnow.co | electricidad |
-| Técnico 3 | tecnico3@demo.fixnow.co | cerrajería |
+| Admin | admin@test.co | administrador (staff) |
+| Cliente 1 | cliente1@test.co | cliente |
+| Cliente 2 | cliente2@test.co | cliente |
+| Técnico 1 | tecnico1@test.co | plomería |
+| Técnico 2 | tecnico2@test.co | electricidad |
+| Técnico 3 | tecnico3@test.co | cerrajería |
+| Suspendido | susp@test.co | cliente (bloqueado, para probar el login rechazado) |
 
 Incluye 3 solicitudes en distintos estados (pendiente, en curso, finalizada)
 y 1 calificación de 5★. Para ver la ayuda: `manage.py seed_demo --help`.

@@ -1,0 +1,20 @@
+{
+  "name": "fixnow",
+  "version": "1.0.0",
+  "description": "Plataforma digital que conecta de manera rápida y confiable a personas que necesitan un servicio técnico en el hogar - como electricidad, plomería o soporte tecnológico - con técnicos disponibles cerca de su ubicación.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cruzkarol118-ops/FixNow.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cruzkarol118-ops/FixNow/issues"
+  },
+  "homepage": "https://github.com/cruzkarol118-ops/FixNow#readme"
+}

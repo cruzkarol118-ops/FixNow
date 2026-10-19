@@ -90,8 +90,20 @@
     L.marker([s.lat, s.lng], { icon: pin }).bindPopup(
       `<strong>#${s.id} · ${s.categoria}</strong><br>${s.cliente}<br>${s.descripcion}<br>` +
       `Ofrece: ${s.precio_txt} · ${dist}<br>` +
-      `<a class="btn btn-fx btn-sm mt-2" href="#sol-${s.id}" data-resaltar="${s.id}">Ver solicitud abajo</a>`,
+      `<button class="btn btn-fx btn-sm mt-2" data-aceptar="${s.id}">Aceptar</button> ` +
+      `<a class="btn btn-line btn-sm mt-2" href="#sol-${s.id}" data-resaltar="${s.id}">Ver solicitud abajo</a>`,
     ).addTo(mapa);
+  });
+
+  // CP-MAP-03: aceptar directo desde la tarjeta del mapa. El botón del popup
+  // dispara el formulario "Aceptar" de la tarjeta correspondiente (POST real
+  // con CSRF, sin duplicar lógica).
+  document.getElementById("mapa").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-aceptar]");
+    if (!b) return;
+    const card = document.getElementById(`sol-${b.dataset.aceptar}`);
+    const form = card && card.querySelector("form[action*='aceptar']");
+    if (form) form.requestSubmit();
   });
   if (conCoords.length) {
     mapa.fitBounds(L.latLngBounds([[yo.lat, yo.lng], ...conCoords.map((s) => [s.lat, s.lng])]).pad(0.2));

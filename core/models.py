@@ -18,7 +18,10 @@ from django.core.validators import MaxValueValidator, MinLengthValidator, MinVal
 from django.db import models
 from django.utils import timezone
 
-from .validators import validar_cedula, validar_certificacion, validar_foto
+from .validators import (
+    validar_cedula, validar_certificacion, validar_foto, validar_nombre,
+    validar_telefono,
+)
 
 
 # =====================================================================
@@ -91,8 +94,9 @@ class Usuario(AbstractUser):
 
     correo = models.EmailField("correo electrónico", unique=True)
     cedula = models.CharField(max_length=10, unique=True, validators=[validar_cedula])
-    nombre_completo = models.CharField(max_length=150)
-    telefono = models.CharField(max_length=20)
+    nombre_completo = models.CharField(
+        max_length=150, validators=[validar_nombre])
+    telefono = models.CharField(max_length=20, validators=[validar_telefono])
     rol = models.CharField(max_length=20, choices=Rol.choices)
     estado = models.CharField(max_length=25, choices=Estado.choices, default=Estado.ACTIVO)
 
@@ -143,6 +147,9 @@ class Usuario(AbstractUser):
 
         Bloque A4: además cierra todas sus sesiones activas (borra sus filas
         en django_session) para que la suspensión sea efectiva de inmediato.
+        CP-FN15-11: las solicitudes EN_CURSO del técnico suspendido vuelven a
+        PENDIENTE (tecnico=None) para que otro técnico pueda tomarlas y no
+        queden servicios estancados; se avisa al cliente de cada una.
         """
         self.estado = self.Estado.SUSPENDIDO
         self.motivo_suspension = motivo
@@ -151,6 +158,24 @@ class Usuario(AbstractUser):
         if self.rol == self.Rol.TECNICO and hasattr(self, "perfil_tecnico"):
             self.perfil_tecnico.disponible = False
             self.perfil_tecnico.save(update_fields=["disponible"])
+        if self.rol == self.Rol.TECNICO:
+            en_curso = Solicitud.objects.filter(
+                tecnico=self, estado=Solicitud.Estado.EN_CURSO)
+            for solicitud in en_curso:
+                Solicitud.objects.filter(
+                    pk=solicitud.pk, estado=Solicitud.Estado.EN_CURSO,
+                ).update(
+                    estado=Solicitud.Estado.PENDIENTE,
+                    tecnico=None, fecha_asignacion=None,
+                )
+                Notificacion.objects.create(
+                    usuario=solicitud.cliente,
+                    tipo=Notificacion.Tipo.SOLICITUD_LIBERADA,
+                    mensaje=(f"El técnico asignado a tu solicitud #{solicitud.pk} "
+                             f"ya no está disponible: la solicitud volvió a "
+                             f"pendiente para que otro técnico la tome."),
+                    solicitud=solicitud,
+                )
         from django.contrib.sessions.models import Session
         for sesion in Session.objects.all():
             datos = sesion.get_decoded()
@@ -570,6 +595,9 @@ class Notificacion(models.Model):
         SOLICITUD_RECHAZADA = "solicitud_rechazada", "Solicitud rechazada"
         SOLICITUD_FINALIZADA = "solicitud_finalizada", "Solicitud finalizada"
         SOLICITUD_CANCELADA = "solicitud_cancelada", "Solicitud cancelada"
+        # CP-FN15-11: el técnico asignado fue suspendido y la solicitud volvió
+        # a pendiente para que otro técnico la tome.
+        SOLICITUD_LIBERADA = "solicitud_liberada", "Solicitud devuelta a pendiente"
         TECNICO_APROBADO = "tecnico_aprobado", "Técnico aprobado"
         TECNICO_RECHAZADO = "tecnico_rechazado", "Técnico rechazado"
         INFO_SOLICITADA = "info_solicitada", "Información solicitada"

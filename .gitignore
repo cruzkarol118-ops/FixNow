@@ -8,4 +8,11 @@ venv/
 plan_integral_fixnow.md
 final ingenieria de softw2 corte 1 este si-1.md
 plan_ejecucion_verificable_fixnow.md
+plan_rework_visual_fixnow.md
+casos_de_prueba_fixnow.md
+casos_de_prueba_ejecucion.md
 media/*
+Thumbs.db
+desktop.ini
+*.log
+staticfiles/

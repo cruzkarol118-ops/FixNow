@@ -661,24 +661,76 @@ def solicitud_calificar(request, pk):
     return redirect("cliente_historial")
 
 
+def _codigo_confirmacion():
+    """CP-FN2-12: código de 6 dígitos para confirmar el cambio de correo.
+
+    En esta versión no hay envío real de correos: el código se muestra en
+    pantalla (simulación del correo de verificación) y además se exige la
+    contraseña actual, así que nadie puede reemplazar el correo sin
+    confirmación explícita del dueño de la cuenta.
+    """
+    import random
+    return f"{random.randint(100000, 999999)}"
+
+
 @rol_requerido(Usuario.Rol.CLIENTE)
 def cliente_perfil(request):
     """B1 / FN-2: editar perfil del cliente.
 
-    Cédula y correo se muestran como no editables. El cambio de correo con
-    verificación queda documentado como pendiente: el template indica que
-    para cambiarlo debe contactar a soporte.
+    La cédula se muestra como no editable. El cambio de correo es en dos
+    pasos (CP-FN2-12): 1) el cliente propone el correo nuevo (se valida
+    formato y unicidad, CP-FN2-13) y queda PENDIENTE en la sesión; 2) solo
+    se reemplaza tras confirmar con el código mostrado + la contraseña
+    actual. Mientras no haya confirmación, el correo actual no cambia.
     """
+    pendiente = request.session.get("cambio_correo")
     if request.method == "POST":
+        if request.POST.get("confirmar_correo"):
+            # Paso 2: confirmación del cambio de correo pendiente.
+            if not pendiente:
+                messages.error(request, "No hay un cambio de correo pendiente.")
+                return redirect("cliente_perfil")
+            codigo = (request.POST.get("codigo") or "").strip()
+            password = request.POST.get("password") or ""
+            if codigo != pendiente["codigo"]:
+                messages.error(request, "El código de confirmación no coincide.")
+            elif not request.user.check_password(password):
+                messages.error(request, "La contraseña no coincide.")
+            elif Usuario.objects.filter(correo__iexact=pendiente["correo"]).exclude(
+                    pk=request.user.pk).exists():
+                messages.error(request, "Ese correo ya pertenece a otro usuario.")
+                request.session.pop("cambio_correo", None)
+            else:
+                request.user.correo = pendiente["correo"]
+                request.user.save(update_fields=["correo"])
+                request.session.pop("cambio_correo", None)
+                messages.success(request, "Correo actualizado correctamente.")
+                return redirect("cliente_perfil")
+            return render(request, "cliente/perfil.html", _ctx(
+                "cliente", form=PerfilClienteForm(instance=request.user),
+                cliente=request.user, pendiente_correo=request.session.get("cambio_correo")))
         form = PerfilClienteForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
+            correo_nuevo = (form.cleaned_data.get("correo_nuevo") or "").strip()
+            if correo_nuevo and correo_nuevo.lower() != request.user.correo.lower():
+                # Paso 1: queda pendiente; NO se reemplaza todavía.
+                request.session["cambio_correo"] = {
+                    "correo": correo_nuevo,
+                    "codigo": _codigo_confirmacion(),
+                }
+                messages.info(
+                    request,
+                    "Para completar el cambio de correo, confirma con el código "
+                    "de verificación y tu contraseña. Tu correo actual sigue activo.")
+                return redirect("cliente_perfil")
             messages.success(request, "Perfil actualizado correctamente.")
             return redirect("cliente_perfil")
     else:
         form = PerfilClienteForm(instance=request.user)
     return render(request, "cliente/perfil.html", _ctx(
-        "cliente", form=form, cliente=request.user))
+        "cliente", form=form, cliente=request.user,
+        pendiente_correo=request.session.get("cambio_correo")))
 
 
 # ---------- Técnico ----------
@@ -688,6 +740,28 @@ def _perfil_tecnico_or_403(request):
         return request.user.perfil_tecnico
     except Usuario.perfil_tecnico.RelatedObjectDoesNotExist:
         raise PermissionDenied("No tienes un perfil técnico asociado.")
+
+
+def _pendientes_para_tecnico(perfil, usuario):
+    """Base común de la bandeja (FN-11) y el mapa (Bloque H).
+
+    CP-FN11-03: un técnico con disponibilidad inactiva NO recibe solicitudes
+    pendientes públicas; solo ve las dirigidas específicamente a él (para
+    que pueda aceptarlas o rechazarlas). Excluye las que ya rechazó y las de
+    clientes suspendidos.
+    """
+    filtro = Q(tecnico=usuario)
+    if perfil.disponible:
+        filtro |= Q(visible_tecnicos=True,
+                    categoria__in=perfil.especialidades_efectivas)
+    return (
+        Solicitud.objects.filter(estado=Solicitud.Estado.PENDIENTE)
+        .filter(filtro)
+        .exclude(rechazada_por=usuario)
+        .exclude(cliente__estado=Usuario.Estado.SUSPENDIDO)
+        .select_related("cliente").prefetch_related("fotos")
+        .order_by("-urgencia", "-fecha_creacion")
+    )
 
 
 @rol_requerido(Usuario.Rol.TECNICO)
@@ -701,18 +775,7 @@ def tecnico_solicitudes(request):
     # Bloque H+I: ve las visibles de sus especialidades efectivas (principal +
     # extras aprobadas) MÁS las dirigidas a él aunque sean privadas.
     # Bloque H: respeta visible_tecnicos (si el cliente la apagó, no sale aquí).
-    solicitudes = (
-        Solicitud.objects.filter(
-            estado=Solicitud.Estado.PENDIENTE,
-        ).filter(
-            Q(visible_tecnicos=True,
-              categoria__in=perfil.especialidades_efectivas)
-            | Q(tecnico=request.user),
-        ).exclude(rechazada_por=request.user)
-        .exclude(cliente__estado=Usuario.Estado.SUSPENDIDO)
-        .select_related("cliente").prefetch_related("fotos")
-        .order_by("-urgencia", "-fecha_creacion")
-    )
+    solicitudes = _pendientes_para_tecnico(perfil, request.user)
     for solicitud in solicitudes:
         solicitud.icono = _ICONO_CATEGORIA.get(solicitud.categoria, "bi-tools")
     return render(request, "tecnico/solicitudes.html", _ctx(
@@ -944,8 +1007,8 @@ def solicitud_pagar(request, pk):
             Notificacion.objects.create(
                 usuario=request.user,
                 tipo=Notificacion.Tipo.PAGO_FALLIDO,
-                mensaje=f"Tu pago de la solicitud #{solicitud.pk} falló: "
-                        f"{datos['motivo']} Puedes reintentarlo.",
+                mensaje=(f"Tu pago de la solicitud #{solicitud.pk} falló: "
+                         f"{datos['motivo']} Puedes reintentarlo.")[:255],
                 solicitud=solicitud,
             )
             messages.error(
@@ -1112,7 +1175,7 @@ def admin_tecnicos(request):
                 Notificacion.objects.create(
                     usuario=tecnico,
                     tipo=Notificacion.Tipo.TECNICO_RECHAZADO,
-                    mensaje=f"Tu registro fue rechazado. Motivo: {motivo}",
+                    mensaje=(f"Tu registro fue rechazado. Motivo: {motivo}")[:255],
                 )
                 messages.success(request, f"{tecnico.nombre_completo} fue rechazado.")
             else:  # info: sigue pendiente, la observación queda en motivo_rechazo
@@ -1121,7 +1184,8 @@ def admin_tecnicos(request):
                 Notificacion.objects.create(
                     usuario=tecnico,
                     tipo=Notificacion.Tipo.INFO_SOLICITADA,
-                    mensaje=f"El administrador necesita más información: {motivo}",
+                    mensaje=(f"El administrador necesita más información: "
+                             f"{motivo}")[:255],
                 )
                 messages.success(request, f"Se notificó a {tecnico.nombre_completo} lo que le falta.")
             return redirect("admin_tecnicos")
@@ -1161,7 +1225,8 @@ def admin_usuarios(request):
                 Notificacion.objects.create(
                     usuario=objetivo,
                     tipo=Notificacion.Tipo.USUARIO_SUSPENDIDO,
-                    mensaje=f"Tu cuenta fue suspendida. Motivo: {form.cleaned_data['motivo']}",
+                    mensaje=(f"Tu cuenta fue suspendida. "
+                             f"Motivo: {form.cleaned_data['motivo']}")[:255],
                 )
                 messages.success(request, f"{objetivo.nombre_completo} fue suspendido.")
             else:
@@ -1205,17 +1270,24 @@ def admin_reportes(request):
     if desde > hasta:
         desde, hasta = hasta, desde
 
+    # Límites como fecha-hora (no lookups __date): MySQL sin las tablas de
+    # zonas horarias hace que CONVERT_TZ devuelva NULL y los filtros __date
+    # descarten todas las filas (reportes siempre en cero).
+    inicio = timezone.make_aware(datetime.combine(desde, datetime.min.time()))
+    fin = timezone.make_aware(
+        datetime.combine(hasta + timedelta(days=1), datetime.min.time()))
+
     finalizadas = Solicitud.objects.filter(
         estado=Solicitud.Estado.FINALIZADA,
-        fecha_finalizacion__date__gte=desde,
-        fecha_finalizacion__date__lte=hasta,
+        fecha_finalizacion__gte=inicio,
+        fecha_finalizacion__lt=fin,
     )
     comisiones = Comision.objects.filter(
-        fecha_calculo__date__gte=desde, fecha_calculo__date__lte=hasta
+        fecha_calculo__gte=inicio, fecha_calculo__lt=fin
     )
     pagos_ok = Pago.objects.filter(
         estado=Pago.Estado.EXITOSO,
-        fecha_creacion__date__gte=desde, fecha_creacion__date__lte=hasta,
+        fecha_creacion__gte=inicio, fecha_creacion__lt=fin,
     )
     total_comisiones = comisiones.aggregate(total=Sum("monto_comision"))["total"] or 0
     total_pagado = pagos_ok.aggregate(total=Sum("monto"))["total"] or 0
@@ -1409,17 +1481,7 @@ def tecnico_mapa(request):
     con la posición del cliente, lo ofrecido y aceptar/rechazar.
     """
     perfil = _perfil_tecnico_or_403(request)
-    base = (
-        Solicitud.objects.filter(estado=Solicitud.Estado.PENDIENTE)
-        .filter(
-            Q(visible_tecnicos=True,
-              categoria__in=perfil.especialidades_efectivas)
-            | Q(tecnico=request.user),
-        ).exclude(rechazada_por=request.user)
-        .exclude(cliente__estado=Usuario.Estado.SUSPENDIDO)
-        .select_related("cliente").prefetch_related("fotos")
-        .order_by("-urgencia", "-fecha_creacion")
-    )
+    base = _pendientes_para_tecnico(perfil, request.user)
     yo = request.user
     tarjetas = []
     for s in base:
