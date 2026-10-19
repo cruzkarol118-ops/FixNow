@@ -95,6 +95,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": config("DB_NAME"),
+        # Conexión persistente: en Railway free el servicio MySQL duerme al
+        # quedar inactivo; mantener la conexión abierta lo mantiene despierto
+        # (y de paso evita reconectar en cada request).
+        "CONN_MAX_AGE": 60,
         "USER": config("DB_USER"),
         "PASSWORD": config("DB_PASSWORD"),
         "HOST": config("DB_HOST", default="127.0.0.1"),
