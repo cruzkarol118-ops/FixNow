@@ -31,4 +31,9 @@ urlpatterns = [
 # suficiente para la demo del proyecto).
 urlpatterns += [
     re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+    # El CSS/JS se sirve desde la propia carpeta static/ del repo (está en
+    # git), de modo que no dependa de que collectstatic haya corrido en el
+    # contenedor (Railway puede no usar el startCommand de railway.json).
+    re_path(r"^static/(?P<path>.*)$", serve,
+            {"document_root": settings.STATICFILES_DIRS[0]}),
 ]
