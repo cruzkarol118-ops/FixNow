@@ -10,3 +10,4 @@ nltk
 python-decouple
 gunicorn
 whitenoise
+cryptography
