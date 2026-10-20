@@ -91,6 +91,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+import ssl
+
+# TLS para BDs externas (Layerbase exige SSL; el endpoint pooled usa un
+# certificado propio del pooler, asi que no se puede verificar la
+# identidad del servidor, solo se cifra el canal).
+def _mysql_ssl():
+    if not config("DB_SSL", default=False, cast=bool):
+        return {}
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return {"ssl": ctx}
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -108,6 +121,10 @@ DATABASES = {
             # Bloque F3: modo estricto a nivel de conexión (antes solo dependía
             # del sql_mode global del servidor).
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            # BDs que despiertan al conectar (Layerbase tarda ~20s en frío):
+            # un timeout corto mata el primer intento.
+            "connect_timeout": config("DB_CONNECT_TIMEOUT", default=30, cast=int),
+            **_mysql_ssl(),
         },
         # Bloque F4: la BD de test también en utf8mb4 (si no, los ★ de las
         # notificaciones fallan con "Incorrect string value").

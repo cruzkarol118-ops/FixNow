@@ -21,4 +21,4 @@ python manage.py seed_demo || echo "seed_demo fallo; revisar error arriba."
 python manage.py reentrenar_ia || true
 python manage.py collectstatic --noinput || true
 
-exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 90
