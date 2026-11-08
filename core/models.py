@@ -118,6 +118,7 @@ class Usuario(AbstractUser):
     motivo_rechazo = models.CharField(max_length=300, blank=True)
 
     USERNAME_FIELD = "correo"
+    EMAIL_FIELD = "correo"
     REQUIRED_FIELDS = ["cedula", "nombre_completo", "telefono", "rol"]
 
     objects = UsuarioManager()
