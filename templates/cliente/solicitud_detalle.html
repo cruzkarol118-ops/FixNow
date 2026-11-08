@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Detalle de la solicitud FN-{{ solicitud.pk }}{% endblock %}
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="fx-page-head">
+  <div>
+    <h1>Detalle de la solicitud</h1>
+    <p class="fx-page-head__meta mb-0"><span class="text-muted small">FN = FixNow · el número es el consecutivo de la solicitud.</span></p>
+  </div>
+  {% if rol == 'cliente' %}
+    {% if desde == 'inicio' %}
+    <a class="btn btn-line btn-sm" href="{% url 'cliente_inicio' %}"><i class="bi bi-arrow-left"></i> Volver al inicio</a>
+    {% else %}
+    <a class="btn btn-line btn-sm" href="{% url 'cliente_historial' %}"><i class="bi bi-arrow-left"></i> Volver a mis solicitudes</a>
+    {% endif %}
+  {% elif rol == 'tecnico' %}
+    {% if desde == 'historial' %}
+    <a class="btn btn-line btn-sm" href="{% url 'tecnico_historial' %}"><i class="bi bi-arrow-left"></i> Volver al historial</a>
+    {% elif desde == 'mapa' %}
+    <a class="btn btn-line btn-sm" href="{% url 'tecnico_mapa' %}"><i class="bi bi-arrow-left"></i> Volver al mapa</a>
+    {% else %}
+    <a class="btn btn-line btn-sm" href="{% url 'tecnico_solicitudes' %}"><i class="bi bi-arrow-left"></i> Volver a solicitudes</a>
+    {% endif %}
+  {% else %}
+  <a class="btn btn-line btn-sm" href="{% url 'admin_tecnicos' %}"><i class="bi bi-arrow-left"></i> Volver</a>
+  {% endif %}
+</div>
+
+<article class="fx-order fx-order--{{ solicitud.estado }}">
+  <div class="fx-order__head">
+    <div class="fx-order__id"><small>Orden</small> FN-{{ solicitud.pk }}
+      <span class="text-muted" style="font-family: var(--fx-ui); font-size:.8125rem; font-weight:500;">{{ solicitud.get_categoria_display }}</span>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      {% if solicitud.urgencia == "urgente" %}<span class="fx-badge fx-badge--urgente"><i class="bi bi-exclamation-triangle-fill"></i> Urgente</span>{% endif %}
+      {% include "partials/estado.html" with estado=solicitud.estado %}
+    </div>
+  </div>
+  <div class="fx-order__body">
+    <span class="fx-overline">Descripción</span>
+    <p class="mb-3">{{ solicitud.descripcion }}</p>
+
+    <dl class="fx-order__grid">
+      <div>
+        <dt><i class="bi bi-person"></i> Cliente</dt>
+        <dd>{{ solicitud.cliente.nombre_completo }}</dd>
+      </div>
+      <div>
+        <dt><i class="bi bi-tools"></i> Técnico</dt>
+        <dd>{% if solicitud.tecnico %}{{ solicitud.tecnico.nombre_completo }}{% else %}Sin asignar{% endif %}</dd>
+      </div>
+      <div>
+        <dt><i class="bi bi-geo-alt"></i> Dirección del servicio</dt>
+        <dd>{{ solicitud.direccion }}</dd>
+      </div>
+      <div>
+        <dt><i class="bi bi-calendar3"></i> Fecha de solicitud</dt>
+        <dd>{{ solicitud.fecha_creacion|date:"d M Y, H:i" }}</dd>
+      </div>
+      {% if solicitud.precio_ofrecido %}
+      <div>
+        <dt><i class="bi bi-tag"></i> Precio que ofreces</dt>
+        <dd>${{ solicitud.precio_ofrecido }}</dd>
+      </div>
+      {% endif %}
+      {% if solicitud.estado == "finalizada" and solicitud.monto_final %}
+      <div>
+        <dt><i class="bi bi-cash-coin"></i> Monto final</dt>
+        <dd>${{ solicitud.monto_final }}{% if solicitud.monto_aceptado %} (aceptado){% endif %}</dd>
+      </div>
+      {% endif %}
+      {% if solicitud.notas_finales %}
+      <div>
+        <dt><i class="bi bi-chat-left-text"></i> Notas del técnico</dt>
+        <dd>{{ solicitud.notas_finales }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+
+    {% if solicitud.calificacion %}
+    <div class="mt-3">
+      <span class="fx-overline">Calificación</span>
+      <div class="text-warning" aria-label="{{ solicitud.calificacion.estrellas }} de 5">
+        {% for n in "12345" %}<i class="bi {% if forloop.counter <= solicitud.calificacion.estrellas %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}
+        <span class="text-muted small">({{ solicitud.calificacion.estrellas }}/5)</span>
+      </div>
+      {% if solicitud.calificacion.comentario %}<p class="small text-muted mb-0">“{{ solicitud.calificacion.comentario }}”</p>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if fotos_evidencia %}
+    <div class="mt-4">
+      <span class="fx-overline">Fotos de evidencia</span>
+      <div class="row g-2 mt-1">
+        {% for f in fotos_evidencia %}
+        <div class="col-6 col-md-4">
+          <a href="{{ f.imagen.url }}" target="_blank" rel="noopener" aria-label="Ver foto de evidencia {{ forloop.counter }}">
+            <img src="{{ f.imagen.url }}" alt="Foto de evidencia {{ forloop.counter }} de la solicitud FN-{{ solicitud.pk }}" class="img-fluid rounded border" loading="lazy">
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if fotos_final %}
+    <div class="mt-4">
+      <span class="fx-overline">Evidencia de finalización</span>
+      <div class="row g-2 mt-1">
+        {% for f in fotos_final %}
+        <div class="col-6 col-md-4">
+          <a href="{{ f.imagen.url }}" target="_blank" rel="noopener" aria-label="Ver foto de finalización {{ forloop.counter }}">
+            <img src="{{ f.imagen.url }}" alt="Foto de finalización {{ forloop.counter }} de la solicitud FN-{{ solicitud.pk }}" class="img-fluid rounded border" loading="lazy">
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not fotos_evidencia and not fotos_final %}
+    <p class="small text-muted mt-3 mb-0"><i class="bi bi-image"></i> Esta solicitud no tiene fotos adjuntas.</p>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

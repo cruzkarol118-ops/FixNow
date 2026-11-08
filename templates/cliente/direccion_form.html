@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="fx-page-head">
+  <div>
+    <h1>{{ titulo }}</h1>
+    <p class="fx-page-head__meta mb-0">Pon una etiqueta fácil de reconocer y marca la ubicación en el mapa.</p>
+  </div>
+  <a class="btn btn-line btn-sm" href="{% url 'cliente_perfil' %}">Volver al perfil</a>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<form method="post" class="fx-card needs-validation" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">
+    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label" for="etiqueta">Etiqueta</label>
+      {{ form.etiqueta }}
+      {% for error in form.etiqueta.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="es_principal">Principal</label>
+      <div class="form-check mt-2">
+        {{ form.es_principal }}
+        <label class="form-check-label" for="id_es_principal">Usar como dirección activa</label>
+      </div>
+      <div class="form-text">Solo puede haber una principal: es la que usan las distancias.</div>
+    </div>
+    <div class="col-12">
+      <label class="form-label" for="direccion">Dirección</label>
+      {{ form.direccion }}
+      {% for error in form.direccion.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+  </div>
+
+  {% include "partials/mapa_ubicacion.html" with lat=form.initial.latitud lng=form.initial.longitud %}
+  {{ form.latitud }}
+  {{ form.longitud }}
+
+  <button class="btn btn-fx btn-lg w-100" type="submit">Guardar dirección</button>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{% static 'js/ubicacion.js' %}"></script>
+{% endblock %}

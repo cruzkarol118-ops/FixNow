@@ -2,10 +2,13 @@
 {% block title %}Solicitudes{% endblock %}
 {% block content %}
 {# Disponibilidad (FN-10): POST real a tecnico_disponibilidad #}
-<div class="fx-card d-flex align-items-center justify-content-between gap-3 mb-4" id="cardDisp">
-  <div>
-    <div class="fw-bold" id="dispTitulo">{% if perfil.disponible %}Estás disponible{% else %}Estás en pausa{% endif %}</div>
-    <div class="text-muted small" id="dispTexto">{% if perfil.disponible %}Los clientes cercanos pueden elegirte.{% else %}No apareces en las búsquedas de los clientes.{% endif %}</div>
+<div class="fx-availability {% if perfil.disponible %}is-on{% endif %}" id="cardDisp">
+  <div class="fx-availability__status">
+    <span class="fx-availability__dot" aria-hidden="true"></span>
+    <div>
+      <h2 id="dispTitulo">{% if perfil.disponible %}Estás disponible{% else %}Estás en pausa{% endif %}</h2>
+      <p id="dispTexto">{% if perfil.disponible %}Los clientes cercanos pueden elegirte.{% else %}No apareces en las búsquedas de los clientes.{% endif %}</p>
+    </div>
   </div>
   <form method="post" action="{% url 'tecnico_disponibilidad' %}" class="m-0">
     {% csrf_token %}
@@ -17,9 +20,12 @@
   </form>
 </div>
 
-<div class="d-flex align-items-baseline justify-content-between mb-3">
-  <h1 class="h3 mb-0">Solicitudes pendientes</h1>
-  <span class="text-muted" id="conteo" aria-live="polite">
+<div class="fx-page-head" style="margin-top: 24px;">
+  <div>
+    <h1>Solicitudes pendientes</h1>
+    <p class="fx-page-head__meta mb-0">Solo de tu especialidad o dirigidas a ti.</p>
+  </div>
+  <span class="fx-badge fx-badge--plain" id="conteo" aria-live="polite">
     {% if solicitudes|length == 1 %}1 solicitud{% else %}{{ solicitudes|length }} solicitudes{% endif %}
   </span>
 </div>
@@ -31,45 +37,51 @@
 {% endif %}
 
 {% if not perfil.disponible %}
-<div id="pausa" class="fx-card fx-empty">
+<div id="pausa" class="fx-empty">
   <i class="bi bi-pause-circle"></i>
   <h3>Estás en pausa</h3>
-  <p class="text-muted mb-0">No recibirás solicitudes nuevas hasta que actives tu disponibilidad. Los servicios que ya tienes en curso siguen igual.</p>
+  <p>No recibirás solicitudes nuevas hasta que actives tu disponibilidad. Los servicios que ya tienes en curso siguen igual.</p>
 </div>
 {% endif %}
 
 <div class="row g-3" id="bandeja" {% if not perfil.disponible %}hidden{% endif %}>
   {% for s in solicitudes %}
   <div class="col-lg-6" data-solicitud>
-    <article class="fx-card h-100 d-flex flex-column">
-      <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+    <article class="fx-order fx-order--pendiente h-100 d-flex flex-column">
+      <div class="fx-order__head">
+        <div class="fx-order__id"><small>Orden</small> FN-{{ s.pk }}</div>
         <div class="d-flex align-items-center gap-2">
+          {% if s.urgencia == "urgente" %}<span class="fx-badge fx-badge--urgente"><i class="bi bi-exclamation-triangle-fill"></i> Urgente</span>{% endif %}
+          <span class="fx-badge fx-badge--pendiente">Pendiente</span>
+        </div>
+      </div>
+      <div class="fx-order__body flex-grow-1">
+        <div class="d-flex align-items-center gap-2 mb-2">
           <div class="fx-avatar fx-avatar--sm" aria-hidden="true">{{ s.cliente.nombre_completo|slice:":1" }}</div>
           <div>
-            <div class="fw-bold">#{{ s.pk }} · {{ s.cliente.nombre_completo }}</div>
+            <div class="fw-semibold">{{ s.cliente.nombre_completo }}</div>
             <div class="small text-muted">{{ s.fecha_creacion|date:"d/m/Y H:i" }}</div>
           </div>
         </div>
-        {% if s.urgencia == "urgente" %}<span class="fx-badge fx-badge--urgente"><i class="bi bi-exclamation-triangle-fill"></i> Urgente</span>{% endif %}
+        <div class="fw-semibold mb-1"><i class="bi {{ s.icono }}"></i> {{ s.get_categoria_display }}</div>
+        <p class="fx-order__desc mb-2">{{ s.descripcion }}</p>
+        <div class="fx-meta-row">
+          <span><i class="bi bi-geo-alt"></i>{{ s.direccion }}</span>
+          {% if s.fotos.all %}<span><i class="bi bi-image"></i>{{ s.fotos.all|length }} foto(s)</span>{% endif %}
+        </div>
       </div>
-
-      <div class="fw-bold mb-1"><i class="bi {{ s.icono }}"></i> {{ s.get_categoria_display }}</div>
-      <p class="mb-2">{{ s.descripcion }}</p>
-      <div class="small text-muted mb-2"><i class="bi bi-geo-alt-fill"></i> {{ s.direccion }}</div>
-
-      {% if s.fotos.all %}
-      <div class="small text-muted mb-2"><i class="bi bi-image"></i> {{ s.fotos.all|length }} foto(s) adjunta(s)</div>
-      {% endif %}
-
-      <div class="d-flex gap-2 mt-auto pt-2">
+      <div class="fx-order__foot flex-column align-items-stretch" style="gap: 8px;">
+        <a class="btn btn-line btn-sm w-100" href="{% url 'solicitud_detalle' s.pk %}?desde=solicitudes"><i class="bi bi-eye"></i> Ver detalle</a>
+        <div class="d-flex gap-2">
         <form method="post" action="{% url 'tecnico_rechazar' s.pk %}" class="flex-fill">
           {% csrf_token %}
-          <button class="btn btn-line w-100" type="submit">Rechazar</button>
+          <button class="btn btn-line btn-sm w-100" type="submit">Rechazar</button>
         </form>
         <form method="post" action="{% url 'tecnico_aceptar' s.pk %}" class="flex-fill">
           {% csrf_token %}
-          <button class="btn btn-fx w-100" type="submit">Aceptar</button>
+          <button class="btn btn-fx btn-sm w-100" type="submit">Aceptar</button>
         </form>
+        </div>
       </div>
     </article>
   </div>
@@ -77,10 +89,10 @@
 </div>
 
 {% if not solicitudes %}
-<div id="sinSolicitudes" class="fx-card fx-empty">
+<div id="sinSolicitudes" class="fx-empty">
   <i class="bi bi-inbox"></i>
   <h3>No hay solicitudes por ahora</h3>
-  <p class="text-muted mb-0">Cuando un cliente de tu especialidad cree una solicitud, aparecerá aquí.</p>
+  <p>Cuando un cliente de tu especialidad cree una solicitud, aparecerá aquí.</p>
 </div>
 {% endif %}
 {% endblock %}

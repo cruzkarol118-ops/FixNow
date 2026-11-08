@@ -1,30 +1,57 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Ingresar{% endblock %}
 {% block content %}
-<div class="fx-auth">
-  <h1>Ingresa a FixNow</h1>
-  <p class="text-muted">Usa el correo con el que te registraste.</p>
+<div class="fx-auth-page">
+  <div class="fx-auth">
+    <h1>Ingresa a FixNow</h1>
+    <p class="fx-auth__lead">Usa el correo con el que te registraste.</p>
 
-  {% if error %}
-  <div class="alert alert-danger" role="alert">{{ error }}</div>
-  {% endif %}
+    {% if error %}
+    <div class="alert alert-danger" role="alert">{{ error }}</div>
+    {% endif %}
 
-  <form method="post" class="fx-card needs-validation" novalidate>
-    {% csrf_token %}
-    <div class="mb-3">
-      <label class="form-label" for="correo">Correo electrónico</label>
-      <input class="form-control" type="email" id="correo" name="correo" autocomplete="email" value="{{ correo|default:'' }}" required>
-      <div class="invalid-feedback">Escribe un correo válido.</div>
+    <form method="post" class="fx-card fx-auth__form needs-validation" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="correo">Correo electrónico</label>
+        <input class="form-control" type="email" id="correo" name="correo" autocomplete="email" value="{{ correo|default:'' }}" required>
+        <div class="invalid-feedback">Escribe un correo válido.</div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label" for="clave">Contraseña</label>
+        <input class="form-control" type="password" id="clave" name="clave" autocomplete="current-password" required>
+        <div class="invalid-feedback">Escribe tu contraseña.</div>
+      </div>
+      <button class="btn btn-fx btn-lg w-100" type="submit">Ingresar</button>
+      <p class="text-center mt-3 mb-0 small"><a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a></p>
+    </form>
+
+    <p class="fx-auth__foot">¿Aún no tienes cuenta? <a href="{% url 'registro_cliente' %}">Crear cuenta</a></p>
+  </div>
+
+  <aside class="fx-auth__aside" aria-label="Cómo se ve una orden de servicio">
+    <img src="{% static 'img/login-hogar.jpg' %}" alt="" width="640" height="800" loading="lazy">
+    <div class="fx-auth__aside-inner">
+      <article class="fx-order fx-order--en_curso">
+        <div class="fx-order__head">
+          <div class="fx-order__id"><small>Orden</small> FN-2481</div>
+          <span class="fx-badge fx-badge--en_curso">En curso</span>
+        </div>
+        <div class="fx-order__body">
+          <p class="fx-order__desc">Reparación de fuga en el lavaplatos</p>
+          <dl class="fx-order__grid">
+            <div><dt>Técnico</dt><dd>Camilo R.</dd></div>
+            <div><dt>Precio ref.</dt><dd>$ 85.000</dd></div>
+          </dl>
+        </div>
+        <div class="fx-order__foot">
+          <span class="fx-demo-tag">Ejemplo</span>
+          <span class="fx-stamp"><i class="bi bi-patch-check"></i>Verificado</span>
+        </div>
+      </article>
+      <p class="fx-auth__aside-note">Cada solicitud conserva su técnico, estado y precio de referencia.</p>
     </div>
-    <div class="mb-4">
-      <label class="form-label" for="clave">Contraseña</label>
-      <input class="form-control" type="password" id="clave" name="clave" autocomplete="current-password" required>
-      <div class="invalid-feedback">Escribe tu contraseña.</div>
-    </div>
-    <button class="btn btn-fx btn-lg w-100" type="submit">Ingresar</button>
-    <p class="text-center mt-3 mb-0"><a href="#" data-pronto>¿Olvidaste tu contraseña?</a></p>
-  </form>
-
-  <p class="text-center mt-3">¿Aún no tienes cuenta? <a href="{% url 'registro_cliente' %}">Crear cuenta</a></p>
+  </aside>
 </div>
 {% endblock %}

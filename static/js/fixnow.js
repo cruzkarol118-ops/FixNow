@@ -174,4 +174,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+  // ---- Entrada de secciones y líneas de tiempo (respetando movimiento reducido) ----
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const animables = document.querySelectorAll(".fx-reveal, .fx-timeline");
+  if (reduceMotion || !("IntersectionObserver" in window)) {
+    animables.forEach((el) => el.classList.add("is-in"));
+  } else {
+    const io = new IntersectionObserver((entradas) => {
+      entradas.forEach((entrada) => {
+        if (!entrada.isIntersecting) return;
+        entrada.target.classList.add("is-in");
+        io.unobserve(entrada.target);
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+    animables.forEach((el, i) => {
+      el.style.setProperty("--d", `${Math.min(i % 3, 2) * 60}ms`);
+      io.observe(el);
+    });
+  }
 });

@@ -7,7 +7,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .models import (
-    Categoria, DocumentoTecnico, Pago, PerfilTecnico, Solicitud, Usuario,
+    Categoria, Direccion, DocumentoTecnico, Pago, PerfilTecnico, Solicitud,
+    Usuario,
 )
 from .validators import validar_certificacion, validar_foto, validar_nombre, validar_telefono
 
@@ -282,6 +283,14 @@ class PerfilClienteForm(forms.ModelForm):
 
     def clean(self):
         datos = super().clean()
+        # La dirección ya no se edita en el perfil principal (gestor multi-dirección).
+        # Si el POST no trae nuevos valores, conserva los de la principal.
+        if self.instance.pk:
+            if not (datos.get("direccion") or "").strip():
+                datos["direccion"] = self.instance.direccion or ""
+            if datos.get("latitud") is None and datos.get("longitud") is None:
+                datos["latitud"] = self.instance.latitud
+                datos["longitud"] = self.instance.longitud
         _validar_coords(datos)
         return datos
 
@@ -296,10 +305,10 @@ class PerfilClienteForm(forms.ModelForm):
 
     def clean_direccion(self):
         direccion = (self.cleaned_data.get("direccion") or "").strip()
-        if not direccion:
-            raise ValidationError(
-                "La dirección es obligatoria: la necesitarás para crear solicitudes."
-            )
+        # Con el gestor multi-dirección el campo ya no se muestra en el perfil;
+        # si viene vacío se conserva la principal actual (ver clean()).
+        if not direccion and self.instance.pk and (self.instance.direccion or "").strip():
+            return self.instance.direccion
         return direccion
 
     def clean_fecha_nacimiento(self):
@@ -732,3 +741,40 @@ class DesactivarCuentaForm(forms.Form):
         if self.usuario is None or not self.usuario.check_password(clave):
             raise ValidationError("La contraseña no coincide.")
         return clave
+
+
+class DireccionForm(forms.ModelForm):
+    """Dirección del cliente: etiqueta + texto + ubicación en el mapa."""
+
+    class Meta:
+        model = Direccion
+        fields = ["etiqueta", "direccion", "latitud", "longitud", "es_principal"]
+        widgets = {
+            "etiqueta": forms.TextInput(attrs={
+                "class": ATRS_TEXTO, "id": "etiqueta", "maxlength": "50",
+                "placeholder": "Ej. Casa, Oficina, Apartamento",
+            }),
+            "direccion": forms.TextInput(attrs={
+                "class": ATRS_TEXTO, "id": "direccion", "autocomplete": "street-address",
+            }),
+            "latitud": forms.HiddenInput(attrs={"id": "id_latitud"}),
+            "longitud": forms.HiddenInput(attrs={"id": "id_longitud"}),
+            "es_principal": forms.CheckboxInput(attrs={"class": ATRS_CHECK}),
+        }
+
+    def clean(self):
+        datos = super().clean()
+        _validar_coords(datos)
+        return datos
+
+    def clean_etiqueta(self):
+        etiqueta = (self.cleaned_data.get("etiqueta") or "").strip()
+        if not etiqueta:
+            raise ValidationError("Pon una etiqueta, por ejemplo Casa u Oficina.")
+        return etiqueta
+
+    def clean_direccion(self):
+        direccion = (self.cleaned_data.get("direccion") or "").strip()
+        if not direccion:
+            raise ValidationError("Escribe la dirección.")
+        return direccion

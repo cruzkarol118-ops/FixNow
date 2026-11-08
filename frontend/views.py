@@ -14,16 +14,17 @@ from django.views.decorators.http import require_POST
 
 from core.forms import (
     CalificarForm, CambioPasswordForm, DecisionTecnicoForm, DesactivarCuentaForm,
-    DocumentoDecisionForm, DocumentoTecnicoForm, FinalizarSolicitudForm,
-    MontoDecisionForm, PagoSimuladoForm, PerfilClienteForm, PerfilTecnicoForm,
-    PrecioEditarForm, RegistroClienteForm, RegistroTecnicoForm,
-    ResenaModerarForm, SolicitudNuevaForm, SuspenderUsuarioForm,
+    DireccionForm, DocumentoDecisionForm, DocumentoTecnicoForm,
+    FinalizarSolicitudForm, MontoDecisionForm, PagoSimuladoForm,
+    PerfilClienteForm, PerfilTecnicoForm, PrecioEditarForm,
+    RegistroClienteForm, RegistroTecnicoForm, ResenaModerarForm,
+    SolicitudNuevaForm, SuspenderUsuarioForm,
 )
 from core.ia import analizar_sentimiento, huella, predecir_categoria
 from core.models import (
-    Calificacion, Categoria, Comision, ConfiguracionComision, DocumentoTecnico,
-    FotoSolicitud, IASugerencia, Notificacion, Pago, PerfilTecnico,
-    Solicitud, Usuario,
+    Calificacion, Categoria, Comision, ConfiguracionComision, Direccion,
+    DocumentoTecnico, FotoSolicitud, IASugerencia, Notificacion, Pago,
+    PerfilTecnico, Solicitud, Usuario,
 )
 from core.validators import validar_foto
 
@@ -80,6 +81,10 @@ def _destino_por_rol(usuario):
 # ---------- Público ----------
 def landing(request):
     return render(request, "publico/landing.html", _ctx("publico", categorias=CATEGORIAS))
+
+
+def terminos(request):
+    return render(request, "publico/terminos.html", _ctx("publico"))
 
 
 def login_view(request):
@@ -548,6 +553,50 @@ def sugerir_categoria(request):
     })
 
 
+@login_required(login_url="login")
+def solicitud_detalle(request, pk):
+    """Detalle de una solicitud con fotos. Acceso: dueño, técnico asignado o
+    técnico que la tiene en bandeja (pendiente visible), admin/staff."""
+    solicitud = get_object_or_404(
+        Solicitud.objects.select_related("cliente", "tecnico", "calificacion", "pago")
+        .prefetch_related("fotos"), pk=pk)
+    usuario = request.user
+    permitido = False
+    rol_ctx = usuario.rol
+    if usuario.is_staff or usuario.is_superuser or usuario.rol == Usuario.Rol.ADMINISTRADOR:
+        permitido = True
+        rol_ctx = "admin"
+    elif usuario.rol == Usuario.Rol.CLIENTE and solicitud.cliente_id == usuario.pk:
+        permitido = True
+    elif usuario.rol == Usuario.Rol.TECNICO:
+        registrado = solicitud.tecnico_id == usuario.pk
+        en_bandeja = False
+        if not registrado:
+            try:
+                perfil = usuario.perfil_tecnico
+                en_bandeja = solicitud in _pendientes_para_tecnico(perfil, usuario)
+            except Exception:
+                en_bandeja = False
+        permitido = registrado or en_bandeja
+    if not permitido:
+        raise PermissionDenied("No tienes permiso para ver esta solicitud.")
+    solicitud.icono = _ICONO_CATEGORIA.get(solicitud.categoria, "bi-tools")
+    fotos_evidencia = solicitud.fotos.filter(tipo=FotoSolicitud.Tipo.EVIDENCIA)
+    fotos_final = solicitud.fotos.filter(tipo=FotoSolicitud.Tipo.FINALIZACION)
+    desde = (request.GET.get("desde") or "").strip()
+    if desde not in ("solicitudes", "historial", "mapa", "inicio"):
+        desde = "solicitudes" if solicitud.tecnico_id == usuario.pk and solicitud.estado != "pendiente" else "solicitudes"
+        if usuario.rol == Usuario.Rol.CLIENTE:
+            desde = "inicio" if solicitud.estado in [Solicitud.Estado.PENDIENTE, Solicitud.Estado.EN_CURSO] else "historial"
+        elif usuario.rol == Usuario.Rol.TECNICO and solicitud.tecnico_id == usuario.pk and solicitud.estado != "pendiente":
+            desde = "historial"
+    return render(request, "cliente/solicitud_detalle.html", _ctx(
+        rol_ctx, solicitud=solicitud, fotos_evidencia=fotos_evidencia,
+        fotos_final=fotos_final, desde=desde,
+        cliente=solicitud.cliente if usuario.rol == Usuario.Rol.CLIENTE else None,
+        perfil=getattr(usuario, "perfil_tecnico", None) if usuario.rol == Usuario.Rol.TECNICO else None))
+
+
 @rol_requerido(Usuario.Rol.CLIENTE)
 def cliente_historial(request):
     """D1 / FN-6: historial real del cliente dueño.
@@ -712,6 +761,7 @@ def cliente_perfil(request):
         form = PerfilClienteForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
+            _sincronizar_principal_de_perfil(request.user)
             correo_nuevo = (form.cleaned_data.get("correo_nuevo") or "").strip()
             if correo_nuevo and correo_nuevo.lower() != request.user.correo.lower():
                 # Paso 1: queda pendiente; NO se reemplaza todavía.
@@ -728,9 +778,116 @@ def cliente_perfil(request):
             return redirect("cliente_perfil")
     else:
         form = PerfilClienteForm(instance=request.user)
+    direcciones = list(
+        Direccion.objects.filter(cliente=request.user).order_by(
+            "-es_principal", "etiqueta", "-fecha_creacion"))
     return render(request, "cliente/perfil.html", _ctx(
         "cliente", form=form, cliente=request.user,
+        direcciones=direcciones,
+        direccion_form=DireccionForm(),
         pendiente_correo=request.session.get("cambio_correo")))
+
+
+def _sincronizar_principal_de_perfil(usuario):
+    """Mantiene la principal de Direccion en sync con el perfil (FN-2)."""
+    if not (usuario.direccion or "").strip():
+        return
+    principal, _ = Direccion.objects.get_or_create(
+        cliente=usuario, es_principal=True,
+        defaults={"etiqueta": "Principal", "direccion": usuario.direccion,
+                  "latitud": usuario.latitud, "longitud": usuario.longitud})
+    if (principal.direccion != usuario.direccion
+            or principal.latitud != usuario.latitud
+            or principal.longitud != usuario.longitud):
+        principal.direccion = usuario.direccion
+        principal.latitud = usuario.latitud
+        principal.longitud = usuario.longitud
+        principal.save(update_fields=["direccion", "latitud", "longitud"])
+
+
+@rol_requerido(Usuario.Rol.CLIENTE)
+def direccion_seleccionar(request, pk):
+    """Header: pone la dirección elegida como principal."""
+    if request.method != "POST":
+        return redirect("cliente_inicio")
+    direccion = get_object_or_404(Direccion, pk=pk, cliente=request.user)
+    direccion.es_principal = True
+    direccion.save(update_fields=["es_principal"])
+    return redirect("cliente_inicio")
+
+
+@rol_requerido(Usuario.Rol.CLIENTE)
+def direccion_agregar(request):
+    if request.method == "POST":
+        form = DireccionForm(request.POST)
+        if form.is_valid():
+            direccion = form.save(commit=False)
+            direccion.cliente = request.user
+            es_primera = not Direccion.objects.filter(cliente=request.user).exists()
+            if es_primera or form.cleaned_data.get("es_principal"):
+                direccion.es_principal = True
+            direccion.save()
+            messages.success(request, "Dirección guardada.")
+            return redirect("cliente_perfil")
+        return render(request, "cliente/direccion_form.html", _ctx(
+            "cliente", form=form, titulo="Agregar dirección",
+            cliente=request.user))
+    form = DireccionForm()
+    form.fields["es_principal"].initial = True
+    return render(request, "cliente/direccion_form.html", _ctx(
+        "cliente", form=form, titulo="Agregar dirección",
+        cliente=request.user))
+
+
+@rol_requerido(Usuario.Rol.CLIENTE)
+def direccion_editar(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk, cliente=request.user)
+    if request.method == "POST":
+        form = DireccionForm(request.POST, instance=direccion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Dirección actualizada.")
+            return redirect("cliente_perfil")
+        return render(request, "cliente/direccion_form.html", _ctx(
+            "cliente", form=form, titulo="Editar dirección",
+            cliente=request.user))
+    form = DireccionForm(instance=direccion)
+    return render(request, "cliente/direccion_form.html", _ctx(
+        "cliente", form=form, titulo="Editar dirección",
+        cliente=request.user))
+
+
+@rol_requerido(Usuario.Rol.CLIENTE)
+def direccion_eliminar(request, pk):
+    if request.method != "POST":
+        return redirect("cliente_perfil")
+    direccion = get_object_or_404(Direccion, pk=pk, cliente=request.user)
+    era_principal = direccion.es_principal
+    direccion.delete()
+    if era_principal:
+        siguiente = (Direccion.objects.filter(cliente=request.user)
+                     .order_by("etiqueta", "-fecha_creacion").first())
+        if siguiente:
+            siguiente.es_principal = True
+            siguiente.save(update_fields=["es_principal"])
+        else:
+            request.user.direccion = ""
+            request.user.latitud = None
+            request.user.longitud = None
+            request.user.save(update_fields=["direccion", "latitud", "longitud"])
+    messages.success(request, "Dirección eliminada.")
+    return redirect("cliente_perfil")
+
+
+@rol_requerido(Usuario.Rol.CLIENTE)
+def direccion_principal(request, pk):
+    if request.method != "POST":
+        return redirect("cliente_perfil")
+    direccion = get_object_or_404(Direccion, pk=pk, cliente=request.user)
+    direccion.es_principal = True
+    direccion.save(update_fields=["es_principal"])
+    messages.success(request, "Dirección principal actualizada.")
+    return redirect("cliente_perfil")
 
 
 # ---------- Técnico ----------

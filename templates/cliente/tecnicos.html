@@ -11,16 +11,16 @@
   <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
   {% endfor %}
 {% endif %}
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+<div class="fx-page-head">
   <div>
-    <h1 class="h3 mb-0">Técnicos disponibles</h1>
-    <div class="text-muted" id="contador" aria-live="polite"></div>
+    <h1>Técnicos disponibles</h1>
+    <div class="fx-page-head__meta" id="contador" aria-live="polite"></div>
     {% if categoria_filtro_txt and solicitud_actual %}
-    <div class="text-muted small">Para tu solicitud #{{ solicitud_actual.pk }} de {{ categoria_filtro_txt }}{% if solicitud_actual.tecnico %} (dirigida a {{ solicitud_actual.tecnico.nombre_completo }}){% endif %}.</div>
+    <div class="fx-page-head__meta">Para tu solicitud #{{ solicitud_actual.pk }} de {{ categoria_filtro_txt }}{% if solicitud_actual.tecnico %} (dirigida a {{ solicitud_actual.tecnico.nombre_completo }}){% endif %}.</div>
     {% elif categoria_filtro_txt %}
-    <div class="text-muted small">Filtrados por tu solicitud pendiente de {{ categoria_filtro_txt }}.</div>
+    <div class="fx-page-head__meta">Filtrados por tu solicitud pendiente de <strong>{{ categoria_filtro_txt }}</strong>.</div>
     {% else %}
-    <div class="text-muted small">Sin solicitud pendiente: mostramos todos los disponibles.</div>
+    <div class="fx-page-head__meta">Sin solicitud pendiente: mostramos todos los disponibles.</div>
     {% endif %}
   </div>
   <div class="fx-seg fx-split-toggle" id="toggleVista" role="tablist" aria-label="Vista">
@@ -32,7 +32,7 @@
 <div class="d-flex flex-wrap gap-3 mb-3">
   {% if pendientes|length > 1 %}
   <div class="fx-carrusel-box">
-    <div class="small fw-bold mb-1">Buscando técnico para</div>
+    <div class="small fw-semibold mb-1">Buscando técnico para</div>
     <div class="fx-carrusel">
       <button type="button" class="fx-carrusel__btn" data-carrusel-prev aria-label="Anterior">‹</button>
       <div class="fx-solpick" role="group" aria-label="Elegir solicitud" data-carrusel>
@@ -56,7 +56,7 @@
   </div>
   {% endif %}
   <div>
-    <div class="small fw-bold mb-1">Radio de búsqueda</div>
+    <div class="small fw-semibold mb-1">Radio de búsqueda</div>
     <div class="fx-filters" id="filtroRadio">
       <button class="fx-pill" data-radio="2">2 km</button>
       <button class="fx-pill" data-radio="5">5 km</button>
@@ -65,7 +65,7 @@
     </div>
   </div>
   <div>
-    <div class="small fw-bold mb-1">Ordenar por</div>
+    <div class="small fw-semibold mb-1">Ordenar por</div>
     <div class="fx-filters" id="filtroOrden">
       <button class="fx-pill is-on" data-orden="cercania">Cercanía</button>
       <button class="fx-pill" data-orden="calificacion">Calificación</button>
@@ -78,11 +78,11 @@
     <div class="d-grid gap-3" id="lista-tecnicos">
       {% for t in tecnicos %}{% include "partials/tarjeta_tecnico.html" %}{% endfor %}
     </div>
-    <div class="fx-card fx-empty" id="sin-resultados" hidden>
+    <div class="fx-empty" id="sin-resultados" hidden>
       <i class="bi bi-geo-alt"></i>
       <h3>No hay técnicos dentro de este radio</h3>
-      <p class="text-muted">Prueba con un radio más amplio para ver más opciones.</p>
-      <button class="btn btn-fx" id="ampliar">Ampliar radio</button>
+      <p>Prueba con un radio más amplio para ver más opciones.</p>
+      <button class="btn btn-fx mt-2" id="ampliar">Ampliar radio</button>
     </div>
   </div>
   <div class="fx-map-col">

@@ -397,10 +397,12 @@ class TestFN2EditarPerfilCliente(_Base):
         self.assertNotEqual(cli.telefono, "300ABC4567")
 
     def test_cp_fn2_09_direccion_vacia_rechazada(self):
+        # Con el gestor multi-dirección la dirección ya no se edita en el
+        # perfil principal: enviar el campo vacío conserva la principal.
         cli = self._cliente()
         self.client.force_login(cli)
         resp = self._post_perfil_cliente(cli, direccion="")
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 302)
         cli.refresh_from_db()
         self.assertEqual(cli.direccion, "Cra 13 #52-40")
 

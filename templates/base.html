@@ -3,19 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#FFC629">
+  <meta name="theme-color" content="#111B2E">
+  <meta name="description" content="{% block description %}FixNow conecta clientes con técnicos verificados para reparaciones a domicilio. Pide un técnico, elige por calificación y distancia, y paga al terminar.{% endblock %}">
   <title>{% block title %}FixNow{% endblock %} | FixNow</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="{% static 'css/fixnow.css' %}" rel="stylesheet">
+  <script>document.documentElement.classList.add('fx-js');</script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="fx-rol-{{ rol|default:'publico' }}">
-  <a class="visually-hidden-focusable position-absolute p-2 bg-white" href="#contenido">Saltar al contenido</a>
+  <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 px-3 py-2 bg-white border rounded" href="#contenido">Saltar al contenido</a>
 
   {% url 'cliente_inicio' as u_cli_inicio %}
   {% url 'tecnicos' as u_tecnicos %}
@@ -38,40 +40,67 @@
          href="{% if rol == 'cliente' %}{{ u_cli_inicio }}{% elif rol == 'tecnico' %}{{ u_tec_sol }}{% elif rol == 'admin' %}{{ u_adm_tec }}{% else %}{% url 'landing' %}{% endif %}">fix<span>now</span></a>
 
       {% if rol == 'cliente' %}
-        <button class="fx-loc" type="button" data-pronto aria-label="Cambiar dirección del servicio">
-          <i class="bi bi-geo-alt-fill"></i><span>{{ cliente.direccion }}</span><i class="bi bi-chevron-down"></i>
-        </button>
+        <div class="dropdown">
+          <button class="fx-loc dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Cambiar dirección del servicio">
+            <i class="bi bi-geo-alt"></i><span>{% if direccion_activa %}{{ direccion_activa.etiqueta }} — {{ direccion_activa.direccion }}{% else %}{{ cliente.direccion }}{% endif %}</span><i class="bi bi-chevron-down"></i>
+          </button>
+          <ul class="dropdown-menu fx-loc-menu">
+            {% if direccion_activa %}
+              <li><span class="dropdown-item-text small text-muted">Usando: <strong>{{ direccion_activa.etiqueta }}</strong></span></li>
+            {% endif %}
+            {% for d in direcciones %}
+              <li>
+                <form method="post" action="{% url 'direccion_seleccionar' d.pk %}" class="m-0">
+                  {% csrf_token %}
+                  <button class="dropdown-item d-flex justify-content-between align-items-center gap-2" type="submit">
+                    <span><strong>{{ d.etiqueta }}</strong><br><small class="text-muted">{{ d.direccion }}</small></span>
+                    {% if d.es_principal %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}
+                  </button>
+                </form>
+              </li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'cliente_perfil' %}#direcciones"><i class="bi bi-plus-circle me-1"></i> Agregar dirección</a></li>
+            <li><a class="dropdown-item" href="{% url 'cliente_perfil' %}#direcciones"><i class="bi bi-gear me-1"></i> Gestionar direcciones</a></li>
+          </ul>
+        </div>
 
         <nav class="fx-nav" aria-label="Principal">
-          <a class="fx-nav__item {% if request.path == u_cli_inicio %}is-active{% endif %}" href="{{ u_cli_inicio }}"><i class="bi bi-house-door-fill"></i><span>Inicio</span></a>
-          <a class="fx-nav__item {% if request.path == u_tecnicos %}is-active{% endif %}" href="{{ u_tecnicos }}"><i class="bi bi-geo-alt-fill"></i><span>Técnicos</span></a>
+          <a class="fx-nav__item {% if request.path == u_cli_inicio %}is-active{% endif %}" href="{{ u_cli_inicio }}"><i class="bi bi-house-door"></i><span>Inicio</span></a>
+          <a class="fx-nav__item {% if request.path == u_tecnicos %}is-active{% endif %}" href="{{ u_tecnicos }}"><i class="bi bi-geo-alt"></i><span>Técnicos</span></a>
           <a class="fx-nav__item {% if request.path == u_cli_hist %}is-active{% endif %}" href="{{ u_cli_hist }}"><i class="bi bi-receipt"></i><span>Solicitudes</span></a>
-          <a class="fx-nav__item {% if request.path == u_cli_perf %}is-active{% endif %}" href="{{ u_cli_perf }}"><i class="bi bi-person-circle"></i><span>Perfil</span></a>
+          <a class="fx-nav__item {% if request.path == u_cli_perf %}is-active{% endif %}" href="{{ u_cli_perf }}"><i class="bi bi-person"></i><span>Perfil</span></a>
         </nav>
       {% elif rol == 'tecnico' %}
         <nav class="fx-nav" aria-label="Principal">
-          <a class="fx-nav__item {% if request.path == u_tec_sol %}is-active{% endif %}" href="{{ u_tec_sol }}"><i class="bi bi-inbox-fill"></i><span>Solicitudes</span></a>
-          <a class="fx-nav__item {% if request.path == u_tec_mapa %}is-active{% endif %}" href="{{ u_tec_mapa }}"><i class="bi bi-map-fill"></i><span>Mapa</span></a>
+          <a class="fx-nav__item {% if request.path == u_tec_sol %}is-active{% endif %}" href="{{ u_tec_sol }}"><i class="bi bi-inbox"></i><span>Solicitudes</span></a>
+          <a class="fx-nav__item {% if request.path == u_tec_mapa %}is-active{% endif %}" href="{{ u_tec_mapa }}"><i class="bi bi-map"></i><span>Mapa</span></a>
           <a class="fx-nav__item {% if request.path == u_tec_hist %}is-active{% endif %}" href="{{ u_tec_hist }}"><i class="bi bi-clock-history"></i><span>Historial</span></a>
-          <a class="fx-nav__item {% if request.path == u_tec_perf %}is-active{% endif %}" href="{{ u_tec_perf }}"><i class="bi bi-person-circle"></i><span>Perfil</span></a>
+          <a class="fx-nav__item {% if request.path == u_tec_perf %}is-active{% endif %}" href="{{ u_tec_perf }}"><i class="bi bi-person"></i><span>Perfil</span></a>
         </nav>
       {% elif rol == 'admin' %}
         <nav class="fx-nav" aria-label="Principal">
-          <a class="fx-nav__item {% if request.path == u_adm_tec %}is-active{% endif %}" href="{{ u_adm_tec }}"><i class="bi bi-patch-check-fill"></i><span>Aprobaciones</span></a>
-          <a class="fx-nav__item {% if request.path == u_adm_usr %}is-active{% endif %}" href="{{ u_adm_usr }}"><i class="bi bi-people-fill"></i><span>Usuarios</span></a>
-          <a class="fx-nav__item {% if request.path == u_adm_rep %}is-active{% endif %}" href="{{ u_adm_rep }}"><i class="bi bi-bar-chart-fill"></i><span>Reportes</span></a>
-          <a class="fx-nav__item {% if request.path == u_adm_res %}is-active{% endif %}" href="{{ u_adm_res }}"><i class="bi bi-chat-quote-fill"></i><span>Reseñas</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_tec %}is-active{% endif %}" href="{{ u_adm_tec }}"><i class="bi bi-patch-check"></i><span>Aprobaciones</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_usr %}is-active{% endif %}" href="{{ u_adm_usr }}"><i class="bi bi-people"></i><span>Usuarios</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_rep %}is-active{% endif %}" href="{{ u_adm_rep }}"><i class="bi bi-bar-chart"></i><span>Reportes</span></a>
+          <a class="fx-nav__item {% if request.path == u_adm_res %}is-active{% endif %}" href="{{ u_adm_res }}"><i class="bi bi-chat-quote"></i><span>Reseñas</span></a>
           <a class="fx-nav__item {% if request.path == u_adm_ia %}is-active{% endif %}" href="{{ u_adm_ia }}"><i class="bi bi-stars"></i><span>IA</span></a>
+        </nav>
+      {% else %}
+        <nav class="fx-nav fx-nav-public" aria-label="Principal">
+          <a class="fx-nav__item" href="{% url 'landing' %}#como-funciona"><i class="bi bi-list-check"></i><span>Cómo funciona</span></a>
+          <a class="fx-nav__item" href="{% url 'landing' %}#categorias"><i class="bi bi-grid"></i><span>Servicios</span></a>
+          <a class="fx-nav__item" href="{% url 'registro_tecnico' %}"><i class="bi bi-tools"></i><span>Para técnicos</span></a>
         </nav>
       {% endif %}
 
       <div class="fx-header__actions">
         {% if rol == 'publico' %}
           <a class="btn btn-line btn-sm" href="{% url 'login' %}">Ingresar</a>
-          <a class="btn btn-fx btn-sm d-none d-sm-inline-block" href="{% url 'registro_cliente' %}">Crear cuenta</a>
+          <a class="btn btn-fx btn-sm d-none d-sm-inline-flex" href="{% url 'registro_cliente' %}">Registrarse</a>
         {% else %}
           <a class="fx-bell" href="{{ u_notif }}" aria-label="Notificaciones: {{ n_notif }} sin leer">
-            <i class="bi bi-bell-fill"></i>
+            <i class="bi bi-bell"></i>
             {% if n_notif %}<span class="fx-bell__dot">{{ n_notif }}</span>{% endif %}
           </a>
           <form method="post" action="{% url 'logout' %}" class="fx-logout">
@@ -91,9 +120,27 @@
 
   {% if rol == 'publico' %}
   <footer class="fx-footer">
-    <div class="d-flex flex-wrap justify-content-between gap-2">
-      <span>FixNow, técnicos verificados cerca de ti.</span>
-      <a href="#" data-pronto class="text-muted">Términos y condiciones</a>
+    <div class="fx-footer__grid">
+      <div>
+        <p class="fx-footer__brand mb-2">fixnow</p>
+        <p class="mb-2" style="max-width: 34ch;">Servicios técnicos a domicilio, con técnicos verificados y pago al terminar el trabajo.</p>
+      </div>
+      <div>
+        <h3>Servicio</h3>
+        <a href="{% url 'landing' %}#categorias">Servicios disponibles</a>
+        <a href="{% url 'landing' %}#como-funciona">Cómo funciona</a>
+        <a href="{% url 'registro_cliente' %}">Pedir un técnico</a>
+      </div>
+      <div>
+        <h3>Cuenta</h3>
+        <a href="{% url 'login' %}">Ingresar</a>
+        <a href="{% url 'registro_cliente' %}">Crear cuenta de cliente</a>
+        <a href="{% url 'registro_tecnico' %}">Registrarme como técnico</a>
+        <a href="{% url 'terminos' %}">Términos y condiciones</a>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap justify-content-between gap-2 mt-4">
+      <span>© FixNow</span>
     </div>
   </footer>
   {% endif %}

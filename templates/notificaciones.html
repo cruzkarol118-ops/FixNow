@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Notificaciones{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Notificaciones</h1>
+<div class="fx-page-head">
+  <div>
+    <h1>Notificaciones</h1>
+    <p class="fx-page-head__meta mb-0">Cambios en tus solicitudes y tu cuenta.</p>
+  </div>
+</div>
 
 {% if messages %}
   {% for message in messages %}
@@ -16,9 +21,9 @@
     <div class="flex-grow-1" style="min-width:0">
       <div class="d-flex align-items-center gap-2 flex-wrap">
         {% if not n.leida %}<span class="fx-badge fx-badge--urgente">Nueva</span>{% endif %}
-        <span class="small text-muted">{{ n.get_tipo_display }}{% if n.solicitud %} · Solicitud #{{ n.solicitud_id }}{% endif %}</span>
+        <span class="fx-overline">{{ n.get_tipo_display }}{% if n.solicitud %} · Orden FN-{{ n.solicitud_id }}{% endif %}</span>
       </div>
-      <p class="mb-1">{{ n.mensaje }}</p>
+      <p class="mb-1 mt-2">{{ n.mensaje }}</p>
       <div class="small text-muted">{{ n.fecha_creacion|date:"d M Y, H:i" }}</div>
     </div>
     {% if not n.leida %}
@@ -31,10 +36,10 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="fx-card fx-empty">
+<div class="fx-empty">
   <i class="bi bi-bell"></i>
   <h3>No tienes notificaciones</h3>
-  <p class="text-muted mb-0">Aquí verás cada cambio en tus solicitudes y tu cuenta.</p>
+  <p>Aquí verás cada cambio en tus solicitudes y tu cuenta.</p>
 </div>
 {% endif %}
 {% endblock %}

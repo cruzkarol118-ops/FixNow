@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Aprendizaje de la IA{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">La IA aprende con el uso</h1>
-<p class="text-muted">Cada solicitud guarda qué sugirió la IA y qué eligió el cliente.
-Con pocas reseñas igual suma: cada corrección es una muestra de entrenamiento.</p>
+<div class="fx-page-head">
+  <div>
+    <h1>La IA aprende con el uso</h1>
+    <p class="fx-page-head__meta mb-0">Cada solicitud guarda qué sugirió la IA y qué eligió el cliente. Con pocas reseñas igual suma: cada corrección es una muestra de entrenamiento.</p>
+  </div>
+</div>
 
 {% if messages %}
   {% for message in messages %}
@@ -14,20 +17,20 @@ Con pocas reseñas igual suma: cada corrección es una muestra de entrenamiento.
 <div class="row g-3 mb-3">
   <div class="col-4">
     <article class="fx-card text-center">
-      <div class="fs-3 fw-bold">{{ frases_base }}</div>
-      <div class="small text-muted">Frases base</div>
+      <div class="fx-stat">{{ frases_base }}</div>
+      <div class="fx-stat-label">Frases base</div>
     </article>
   </div>
   <div class="col-4">
     <article class="fx-card text-center">
-      <div class="fs-3 fw-bold">{{ total }}</div>
-      <div class="small text-muted">Muestras del uso</div>
+      <div class="fx-stat">{{ total }}</div>
+      <div class="fx-stat-label">Muestras del uso</div>
     </article>
   </div>
   <div class="col-4">
     <article class="fx-card text-center">
-      <div class="fs-3 fw-bold">{% if precision != None %}{{ precision }}%{% else %}—{% endif %}</div>
-      <div class="small text-muted">Acierto sugerido</div>
+      <div class="fx-stat">{% if precision != None %}{{ precision }}%{% else %}—{% endif %}</div>
+      <div class="fx-stat-label">Acierto sugerido</div>
     </article>
   </div>
 </div>
@@ -36,25 +39,29 @@ Con pocas reseñas igual suma: cada corrección es una muestra de entrenamiento.
   <div class="col-lg-6">
     <article class="fx-card h-100">
       <h2 class="h5">Muestras por categoría final</h2>
-      {% for c in por_categoria %}
-      <div class="d-flex justify-content-between small border-top py-1">
-        <span>{{ c.categoria_final }}</span><strong>{{ c.n }}</strong>
-      </div>
-      {% empty %}
-      <p class="text-muted mb-0">Aún no hay muestras: se crean al publicar solicitudes.</p>
-      {% endfor %}
+      <ul class="fx-list-clean">
+        {% for c in por_categoria %}
+        <li class="d-flex justify-content-between small">
+          <span>{{ c.categoria_final }}</span><strong class="fx-num">{{ c.n }}</strong>
+        </li>
+        {% empty %}
+        <li><p class="text-muted mb-0">Aún no hay muestras: se crean al publicar solicitudes.</p></li>
+        {% endfor %}
+      </ul>
     </article>
   </div>
   <div class="col-lg-6">
     <article class="fx-card h-100">
       <h2 class="h5">Confusiones top (sugerida → elegida)</h2>
-      {% for c in confusiones %}
-      <div class="d-flex justify-content-between small border-top py-1">
-        <span>{{ c.categoria_sugerida }} → {{ c.categoria_final }}</span><strong>{{ c.n }}</strong>
-      </div>
-      {% empty %}
-      <p class="text-muted mb-0">Sin confusiones registradas.</p>
-      {% endfor %}
+      <ul class="fx-list-clean">
+        {% for c in confusiones %}
+        <li class="d-flex justify-content-between small">
+          <span>{{ c.categoria_sugerida }} → {{ c.categoria_final }}</span><strong class="fx-num">{{ c.n }}</strong>
+        </li>
+        {% empty %}
+        <li><p class="text-muted mb-0">Sin confusiones registradas.</p></li>
+        {% endfor %}
+      </ul>
       <form method="post" action="{% url 'admin_ia' %}" class="mt-3">
         {% csrf_token %}
         <button class="btn btn-fx btn-sm" type="submit">Reentrenar con lo aprendido</button>

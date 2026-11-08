@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Términos y condiciones{% endblock %}
+{% block content %}
+<div class="fx-auth-page">
+  <div class="fx-auth fx-auth--wide text-center mx-auto">
+    <h1>Términos y condiciones</h1>
+    <p class="fx-auth__lead">Texto académico de referencia para el proyecto FixNow.</p>
+
+    <div class="fx-card text-start">
+      <h2 class="h5 fw-semibold">1. Qué es FixNow</h2>
+      <p class="small text-muted">FixNow es una plataforma académica que conecta a clientes con técnicos verificados para servicios técnicos en el hogar (plomería, electricidad, cerrajería, electrodomésticos y otros). No es un negocio operativo ni una oferta comercial.</p>
+
+      <h2 class="h5 fw-semibold">2. Cuentas y perfiles</h2>
+      <p class="small text-muted">Cada persona usa una sola cuenta con su correo. Los clientes acceden al instante tras registrarse. Los técnicos quedan en revisión hasta que un administrador aprueba su certificación; antes de eso no reciben solicitudes.</p>
+
+      <h2 class="h5 fw-semibold">3. Solicitudes y precio</h2>
+      <p class="small text-muted">El cliente describe el daño, elige categoría y técnico por calificación, distancia y precio de referencia, y acuerda el cobro. El monto final lo define el técnico al terminar y el cliente lo acepta antes de pagar. Las fotos adjuntas se usan solo para gestionar la solicitud.</p>
+
+      <h2 class="h5 fw-semibold">4. Uso responsable</h2>
+      <p class="small text-muted">Las cuentas suspendidas o desactivadas no pueden iniciar sesión. Las reseñas se moderan si son ofensivas o falsas. Quien abuse de la plataforma puede perder el acceso.</p>
+
+      <h2 class="h5 fw-semibold">5. Datos personales</h2>
+      <p class="small text-muted">Tus datos (correo, teléfono, dirección opcional en tu perfil) se usan solo para gestionar tus solicitudes, tus notificaciones y tu historial. Puedes desactivar tu cuenta desde tu perfil.</p>
+
+      <a class="btn btn-line btn-sm mt-2" href="{% url 'landing' %}">Volver al inicio</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

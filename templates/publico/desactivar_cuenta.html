@@ -3,8 +3,7 @@
 {% block content %}
 <div class="fx-auth">
   <h1>Desactivar mi cuenta</h1>
-  <p class="text-muted">Esto cierra tu sesión y bloquea tu entrada. Tus datos e historial se conservan y un
-  administrador puede reactivarte si lo pides. Si eres técnico, además quedas invisible en búsquedas.</p>
+  <p class="fx-auth__lead">Esto cierra tu sesión y bloquea tu entrada. Tus datos e historial se conservan y un administrador puede reactivarte si lo pides. Si eres técnico, además quedas invisible en búsquedas.</p>
 
   {% if form.non_field_errors %}
   <div class="alert alert-danger" role="alert">
@@ -12,7 +11,7 @@
   </div>
   {% endif %}
 
-  <form method="post" class="fx-card needs-validation" novalidate>
+  <form method="post" class="fx-card fx-auth__form needs-validation" novalidate>
     {% csrf_token %}
     <div class="mb-4">
       <label class="form-label" for="conf_clave">Confirma con tu contraseña</label>

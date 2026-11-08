@@ -2,41 +2,61 @@
 {% load static %}
 {% block title %}Inicio{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Hola, {{ cliente.nombre_completo|truncatewords:1 }}</h1>
+<div class="fx-page-head">
+  <div>
+    <h1>Hola, {{ cliente.nombre_completo }}</h1>
+    <p class="fx-page-head__meta mb-0">Tu dirección registrada: <strong>{{ cliente.direccion|default:"Sin dirección" }}</strong></p>
+  </div>
+  <a class="btn btn-line btn-sm" href="{% url 'cliente_historial' %}">Mis solicitudes <i class="bi bi-arrow-right"></i></a>
+</div>
 
 <a class="fx-search" href="{% url 'solicitud_nueva' %}">
   <i class="bi bi-search"></i><span>¿Qué se te dañó hoy?</span>
+  <span class="ms-auto fx-badge fx-badge--plain">Crear solicitud</span>
 </a>
 
-<a class="fx-card d-flex align-items-center gap-3 text-decoration-none text-reset mt-3" href="{% url 'solicitud_nueva' %}?enfocar=1">
-  <div class="fx-cat__icon m-0" style="width:52px;height:52px;border-radius:16px;font-size:1.3rem"><i class="bi bi-stars"></i></div>
+<a class="fx-card fx-card--link d-flex align-items-center gap-3 mt-3" href="{% url 'solicitud_nueva' %}?enfocar=1">
+  <div class="fx-avatar" style="border-radius: var(--fx-r-sm);" aria-hidden="true"><i class="bi bi-stars"></i></div>
   <div class="flex-grow-1" style="min-width:0">
-    <div class="fw-bold">¿No sabes qué categoría es?</div>
-    <div class="text-muted small text-truncate">Descríbelo con tus palabras y te sugerimos a dónde va.</div>
+    <div class="fw-semibold">¿No sabes qué categoría es?</div>
+    <div class="text-muted small">Descríbelo con tus palabras y te sugerimos a dónde va.</div>
   </div>
   <i class="bi bi-chevron-right text-muted"></i>
 </a>
 
-<div class="fx-section-title"><h2>Elige una categoría</h2></div>
+<div class="fx-section-title">
+  <h2>Elige una categoría</h2>
+  <span class="text-muted small">5 oficios disponibles</span>
+</div>
 <div class="fx-cats">
   {% for c in categorias %}
   <a class="fx-cat" href="{% url 'solicitud_nueva' %}?categoria={{ c.id }}">
-    <div class="fx-cat__icon"><i class="bi {{ c.icono }}"></i></div>{{ c.nombre }}
+    <i class="bi {{ c.icono }}"></i>{{ c.nombre }}
   </a>
   {% endfor %}
 </div>
 
 {% if activas %}
-<div class="fx-section-title"><h2>Tus solicitudes activas</h2><a href="{% url 'cliente_historial' %}">Ver todas</a></div>
-<div class="d-grid gap-2">
+<div class="fx-section-title"><h2>Tus solicitudes activas</h2><a href="{% url 'cliente_historial' %}">Ver todas <i class="bi bi-arrow-right"></i></a></div>
+<div class="d-grid gap-3">
   {% for s in activas %}
-  <a class="fx-card d-flex align-items-center gap-3 text-decoration-none text-reset" href="{% url 'cliente_historial' %}">
-    <div class="fx-cat__icon m-0" style="width:52px;height:52px;border-radius:16px;font-size:1.3rem"><i class="bi {{ s.icono }}"></i></div>
-    <div class="flex-grow-1" style="min-width:0">
-      <div class="fw-bold">#{{ s.pk }} · {{ s.categoria }} con {{ s.tecnico }}</div>
-      <div class="text-muted small text-truncate">{{ s.descripcion }}</div>
+  <a class="fx-order fx-order--{{ s.estado }} fx-order--link text-decoration-none" href="{% url 'solicitud_detalle' s.pk %}?desde=inicio">
+    <div class="fx-order__head">
+      <div class="fx-order__id"><small>Orden</small> FN-{{ s.pk }}</div>
+      {% include "partials/estado.html" with estado=s.estado %}
     </div>
-    {% include "partials/estado.html" with estado=s.estado %}
+    <div class="fx-order__body">
+      <p class="fx-order__desc mb-2">{{ s.descripcion }}</p>
+      <div class="fx-meta-row">
+        <span><i class="bi {{ s.icono }}"></i>{{ s.categoria }}</span>
+        <span class="fx-divider-v"></span>
+        <span><i class="bi bi-person"></i>{{ s.tecnico }}</span>
+      </div>
+    </div>
+    <div class="fx-order__foot">
+      <span class="small text-muted">Ver detalle</span>
+      <i class="bi bi-arrow-right text-muted"></i>
+    </div>
   </a>
   {% endfor %}
 </div>
@@ -44,7 +64,7 @@
 
 <div class="fx-section-title">
   <h2>Técnicos cerca de ti</h2>
-  <a href="{% url 'tecnicos' %}">Ver todos</a>
+  <a href="{% url 'tecnicos' %}">Ver todos <i class="bi bi-arrow-right"></i></a>
 </div>
 <div class="fx-carrusel">
   <button type="button" class="fx-carrusel__btn" data-carrusel-prev aria-label="Anterior">‹</button>

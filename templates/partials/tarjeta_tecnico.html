@@ -1,13 +1,13 @@
 {# Tarjeta completa (FN-4/FN-5). Atributos data-* los usa el JS de filtrado. #}
-<article class="fx-card fx-tech" data-id="{{ t.id }}" data-nombre="{{ t.nombre }}"
+<article class="fx-tech" data-id="{{ t.id }}" data-nombre="{{ t.nombre }}"
          data-km="{% if t.km != None %}{{ t.km|stringformat:'.2f' }}{% else %}99999{% endif %}" data-rating="{% if t.rating %}{{ t.rating|stringformat:'.2f' }}{% else %}0{% endif %}">
-  {% if elegido_id == t.id %}<span class="fx-badge fx-badge--pendiente mb-2">Preseleccionado</span>{% endif %}
   <div class="fx-tech__top">
     <div class="fx-avatar" aria-hidden="true">{{ t.iniciales }}</div>
-    <div style="min-width:0">
+    <div class="flex-grow-1" style="min-width:0">
       <h3 class="fx-tech__name"><a href="{% url 'tecnico_publico' t.id %}">{{ t.nombre }}</a></h3>
       <div class="fx-tech__spec"><i class="bi {{ t.icono }}"></i>{{ t.especialidad }}</div>
     </div>
+    {% if elegido_id == t.id %}<span class="fx-badge fx-badge--pendiente">Preseleccionado</span>{% endif %}
   </div>
   <div class="fx-tech__meta">
     <span>
@@ -23,6 +23,6 @@
       <div class="text-muted small">Precio de referencia</div>
       <div class="fx-tech__price">{{ t.precio_txt }}</div>
     </div>
-    <button type="button" class="btn btn-fx" data-elegir data-id="{{ t.id }}" data-nombre="{{ t.nombre }}">Elegir</button>
+    <button type="button" class="btn btn-fx btn-sm" data-elegir data-id="{{ t.id }}" data-nombre="{{ t.nombre }}">Elegir</button>
   </div>
 </article>

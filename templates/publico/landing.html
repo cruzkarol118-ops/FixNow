@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Técnicos a domicilio{% endblock %}
+{% load static %}
+{% block title %}Servicios técnicos a domicilio{% endblock %}
+{% block description %}Pide un técnico verificado para plomería, electricidad, cerrajería o electrodomésticos. Elige por calificación y distancia, y paga cuando termine el trabajo.{% endblock %}
 {% block content %}
 {% if messages %}
 <script>
@@ -8,72 +10,156 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 {% endif %}
+
 <section class="fx-hero">
   <div class="fx-hero__inner">
-    <div>
+    <div class="fx-hero__copy">
       <h1>Se dañó algo. Ya hay un técnico cerca.</h1>
-      <p>Cuéntanos qué pasó, elige a un técnico verificado de tu zona y paga cuando termine el trabajo.</p>
-      <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-ink btn-lg" href="{% url 'registro_cliente' %}">Pedir un técnico</a>
-        <a class="btn btn-line btn-lg bg-white" href="{% url 'registro_tecnico' %}">Soy técnico</a>
+      <p class="fx-hero__lead">Cuéntanos qué pasó, elige a un técnico verificado de tu zona y paga cuando termine el trabajo.</p>
+      <div class="fx-hero__actions">
+        <a class="btn btn-fx btn-lg" href="{% url 'registro_cliente' %}">Pedir un técnico <i class="bi bi-arrow-right"></i></a>
+        <a class="btn btn-line btn-lg" href="{% url 'registro_tecnico' %}">Soy técnico</a>
+      </div>
+      <p class="fx-hero__note">Crear la cuenta de cliente toma menos de un minuto.</p>
+
+      <ul class="fx-assurances">
+        <li>
+          <i class="bi bi-patch-check"></i>
+          <div><strong>Técnicos verificados</strong><span>Revisión de identidad y certificados antes de aprobar.</span></div>
+        </li>
+        <li>
+          <i class="bi bi-tag"></i>
+          <div><strong>Precio de referencia</strong><span>Lo ves antes de elegir a quién contratar.</span></div>
+        </li>
+        <li>
+          <i class="bi bi-credit-card"></i>
+          <div><strong>Pago al terminar</strong><span>Cuando el trabajo está listo y confirmado.</span></div>
+        </li>
+      </ul>
+
+      <div class="fx-works" aria-label="Trabajos hechos">
+        <span class="fx-overline">Trabajos hechos</span>
+        <div class="fx-carrusel">
+          <button type="button" class="fx-carrusel__btn" data-carrusel-prev aria-label="Anterior">‹</button>
+          <div class="fx-works__scroller" data-carrusel>
+            <a class="fx-work" href="{% url 'registro_cliente' %}">
+              <img src="{% static 'img/trabajos/plomeria.jpg' %}" alt="Trabajo de plomería" width="640" height="360" loading="lazy">
+              <span class="fx-work__label"><i class="bi bi-droplet-half"></i> Plomería</span>
+            </a>
+            <a class="fx-work" href="{% url 'registro_cliente' %}">
+              <img src="{% static 'img/trabajos/electricidad.jpg' %}" alt="Trabajo de electricidad" width="640" height="360" loading="lazy">
+              <span class="fx-work__label"><i class="bi bi-lightning-charge"></i> Electricidad</span>
+            </a>
+            <a class="fx-work" href="{% url 'registro_cliente' %}">
+              <img src="{% static 'img/trabajos/cerrajeria.jpg' %}" alt="Trabajo de cerrajería" width="640" height="360" loading="lazy">
+              <span class="fx-work__label"><i class="bi bi-key"></i> Cerrajería</span>
+            </a>
+            <a class="fx-work" href="{% url 'registro_cliente' %}">
+              <img src="{% static 'img/trabajos/electrodomesticos.jpg' %}" alt="Trabajo de electrodomésticos" width="640" height="360" loading="lazy">
+              <span class="fx-work__label"><i class="bi bi-tv"></i> Electrodomésticos</span>
+            </a>
+          </div>
+          <button type="button" class="fx-carrusel__btn" data-carrusel-next aria-label="Siguiente">›</button>
+        </div>
       </div>
     </div>
 
-    <div class="fx-hero__card" aria-hidden="true">
-      <div class="fx-tech">
-        <div class="fx-tech__top">
-          <div class="fx-avatar">CR</div>
-          <div>
-            <p class="fx-tech__name">Camilo Restrepo</p>
-            <div class="fx-tech__spec"><i class="bi bi-droplet-half"></i>Plomería</div>
+    <div class="fx-hero__media">
+      <img class="fx-hero__photo" src="{% static 'img/hero-tecnico.jpg' %}"
+           alt="Técnico revisando una instalación doméstica" width="640" height="800" fetchpriority="high">
+
+      <article class="fx-order fx-order--en_curso" aria-label="Ejemplo de orden de servicio">
+        <div class="fx-order__head">
+          <div class="fx-order__id"><small>Orden</small> FN-2481</div>
+          <span class="fx-badge fx-badge--en_curso">En curso</span>
+        </div>
+        <div class="fx-order__body">
+          <p class="fx-order__desc">Reparación de fuga en el lavaplatos</p>
+          <dl class="fx-order__grid">
+            <div><dt><i class="bi bi-person"></i> Técnico</dt><dd>Camilo R.</dd></div>
+            <div><dt><i class="bi bi-signpost-2"></i> Distancia</dt><dd>1,2 km</dd></div>
+            <div><dt><i class="bi bi-tag"></i> Precio ref.</dt><dd>$ 85.000</dd></div>
+            <div><dt><i class="bi bi-credit-card"></i> Pago</dt><dd>Al terminar</dd></div>
+          </dl>
+          <div class="fx-timeline" aria-hidden="true">
+            <span class="fx-timeline__step is-done">Solicitud</span>
+            <span class="fx-timeline__step is-current">En curso</span>
+            <span class="fx-timeline__step">Finalizada</span>
           </div>
         </div>
-        <div class="fx-tech__meta">
-          <span><i class="bi bi-star-fill fx-star"></i>4,9</span>
-          <span><i class="bi bi-signpost-2"></i>1,2 km</span>
-          <span class="fx-badge fx-badge--finalizada">Disponible</span>
+        <div class="fx-order__foot">
+          <span class="fx-demo-tag">Ejemplo</span>
+          <span class="fx-stamp"><i class="bi bi-patch-check"></i>Verificado</span>
         </div>
-      </div>
+      </article>
     </div>
   </div>
 </section>
 
-<section class="mt-4">
-  <div class="fx-section-title"><h2>¿Qué necesitas arreglar?</h2></div>
+<section id="categorias" class="fx-reveal">
+  <div class="fx-section-title">
+    <h2>¿Qué necesitas arreglar?</h2>
+    <a href="{% url 'registro_cliente' %}">Pedir un técnico <i class="bi bi-arrow-right"></i></a>
+  </div>
   <div class="fx-cats">
     {% for c in categorias %}
     <a class="fx-cat" href="{% url 'registro_cliente' %}">
-      <div class="fx-cat__icon"><i class="bi {{ c.icono }}"></i></div>{{ c.nombre }}
+      <i class="bi {{ c.icono }}"></i>{{ c.nombre }}
     </a>
     {% endfor %}
   </div>
 </section>
 
-<section class="mt-5">
+<section id="como-funciona" class="fx-reveal">
   <div class="fx-section-title"><h2>Así funciona</h2></div>
   <div class="fx-steps">
-    <div class="fx-card fx-step">
+    <div class="fx-step">
+      <span class="fx-step__num">01</span>
       <h3>Cuéntanos el daño</h3>
-      <p class="text-muted mb-0">Elige la categoría, describe el problema y, si quieres, adjunta fotos.</p>
+      <p>Elige la categoría, describe el problema y, si quieres, adjunta fotos.</p>
     </div>
-    <div class="fx-card fx-step">
+    <div class="fx-step">
+      <span class="fx-step__num">02</span>
       <h3>Elige a tu técnico</h3>
-      <p class="text-muted mb-0">Compara calificación, distancia y precio de referencia en una lista o en el mapa.</p>
+      <p>Compara calificación, distancia y precio de referencia en una lista o en el mapa.</p>
     </div>
-    <div class="fx-card fx-step">
+    <div class="fx-step">
+      <span class="fx-step__num">03</span>
       <h3>Paga al terminar</h3>
-      <p class="text-muted mb-0">Cuando el técnico finaliza el servicio, pagas en la app y calificas.</p>
+      <p>Cuando el técnico finaliza el servicio, pagas en la app y calificas.</p>
     </div>
   </div>
 </section>
 
-<section class="mt-5">
-  <div class="fx-cta-band d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+<section class="fx-reveal" style="margin-top: 40px;">
+  <div class="fx-band">
     <div>
-      <h2 class="h3 mb-1">¿Trabajas con tus manos?</h2>
-      <p class="mb-0 opacity-75">Regístrate como técnico y recibe solicitudes de tu zona.</p>
+      <h2>¿Trabajas con tus manos?</h2>
+      <p>Regístrate como técnico, envía tus documentos y recibe solicitudes de tu zona cuando tu cuenta sea aprobada.</p>
     </div>
     <a class="btn btn-fx btn-lg" href="{% url 'registro_tecnico' %}">Registrarme como técnico</a>
+  </div>
+</section>
+
+<section class="fx-reveal" style="margin-top: 48px;">
+  <div class="fx-section-title"><h2>Preguntas frecuentes</h2></div>
+  <div class="fx-faq">
+    <details>
+      <summary>¿Cómo se verifica a un técnico?</summary>
+      <p>Cada técnico se registra con sus datos, cédula y certificación del oficio. Un administrador revisa la información y aprueba o rechaza la cuenta antes de que pueda recibir solicitudes.</p>
+    </details>
+    <details>
+      <summary>¿Cuándo y cómo pago?</summary>
+      <p>El pago se realiza al finalizar el servicio, desde la app. En esta versión académica el pago es simulado: no se procesa dinero real.</p>
+    </details>
+    <details>
+      <summary>¿Cómo se calcula la distancia?</summary>
+      <p>La distancia se calcula en línea recta entre tu dirección y la ubicación del técnico. Es una referencia para elegir, no una ruta de desplazamiento.</p>
+    </details>
+    <details>
+      <summary>¿Puedo cancelar una solicitud?</summary>
+      <p>Sí. Puedes cancelar mientras la solicitud está pendiente o en curso. Si el trabajo ya fue finalizado, el estado queda cerrado y puedes calificar el servicio.</p>
+    </details>
   </div>
 </section>
 {% endblock %}

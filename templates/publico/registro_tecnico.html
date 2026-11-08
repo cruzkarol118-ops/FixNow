@@ -1,82 +1,120 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Registro de técnico{% endblock %}
 {% block content %}
-<div class="fx-auth fx-auth--wide">
-  <h1>Regístrate como técnico</h1>
-  <p class="text-muted">Un administrador revisará tu certificación antes de que puedas recibir solicitudes.</p>
+<div class="fx-auth-page">
+  <div class="fx-auth fx-auth--wide">
+    <h1>Regístrate como técnico</h1>
+    <p class="fx-auth__lead">Un administrador revisará tu certificación antes de que puedas recibir solicitudes.</p>
 
-  <form method="post" enctype="multipart/form-data" class="fx-card needs-validation" novalidate data-pass-form>
-    {% csrf_token %}
+    <form method="post" enctype="multipart/form-data" class="fx-card fx-auth__form needs-validation" novalidate data-pass-form>
+      {% csrf_token %}
 
-    {% if form.non_field_errors %}
-    <div class="alert alert-danger" role="alert">
-      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger" role="alert">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+      {% endif %}
+
+      <fieldset class="fx-fieldset">
+        <legend>Datos personales</legend>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="cedula">Cédula</label>
+            {{ form.cedula }}
+            {% for error in form.cedula.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="nombre_completo">Nombre completo</label>
+            {{ form.nombre_completo }}
+            {% for error in form.nombre_completo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="correo">Correo electrónico</label>
+            {{ form.correo }}
+            {% for error in form.correo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="telefono">Teléfono</label>
+            {{ form.telefono }}
+            {% for error in form.telefono.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="fx-fieldset">
+        <legend>Oficio y cobertura</legend>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="especialidad">Especialidad</label>
+            {{ form.especialidad }}
+            {% for error in form.especialidad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="ciudad">Ciudad</label>
+            {{ form.ciudad }}
+            {% for error in form.ciudad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="certificacion">Documento de certificación</label>
+            {{ form.documento_certificacion }}
+            <div class="form-text">Adjunta tu certificación. PDF o imagen, máximo 5 MB.</div>
+            {% for error in form.documento_certificacion.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="fx-fieldset">
+        <legend>Acceso</legend>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="password">Contraseña</label>
+            {{ form.password }}
+            <ul class="fx-checklist" aria-live="polite">
+              <li data-regla="largo">Mínimo 8 caracteres</li>
+              <li data-regla="mayus">Una mayúscula</li>
+              <li data-regla="numero">Un número</li>
+              <li data-regla="simbolo">Un símbolo (por ejemplo ! # $ %)</li>
+            </ul>
+            {% for error in form.password.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="password2">Confirmar contraseña</label>
+            {{ form.password2 }}
+            {% for error in form.password2.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-check mb-4">
+        {{ form.terminos }}
+        <label class="form-check-label" for="terminos">Acepto los <a href="{% url 'terminos' %}" target="_blank" rel="noopener">términos y condiciones</a></label>
+        {% for error in form.terminos.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
+
+      <button class="btn btn-fx btn-lg w-100" type="submit">Enviar registro</button>
+    </form>
+    <p class="fx-auth__foot">¿Buscas un técnico? <a href="{% url 'registro_cliente' %}">Crea tu cuenta de cliente</a></p>
+  </div>
+
+  <aside class="fx-auth__aside" aria-label="Proceso de aprobación">
+    <img src="{% static 'img/detalle-plomeria.jpg' %}" alt="" width="640" height="800" loading="lazy">
+    <div class="fx-auth__aside-inner">
+      <article class="fx-order fx-order--pendiente">
+        <div class="fx-order__head">
+          <div class="fx-order__id"><small>Registro</small> Técnico</div>
+          <span class="fx-badge fx-badge--pendiente">En revisión</span>
+        </div>
+        <div class="fx-order__body">
+          <ol class="fx-list-clean" style="font-size: .875rem; padding-left: 0; list-style: none;">
+            <li><strong>1.</strong> Envías tus datos y tu certificación.</li>
+            <li><strong>2.</strong> Un administrador revisa identidad y documento.</li>
+            <li><strong>3.</strong> Si es aprobado, activas tu disponibilidad y recibes solicitudes.</li>
+          </ol>
+        </div>
+      </article>
+      <p class="fx-auth__aside-note">Sin aprobación no puedes recibir solicitudes. El proceso es manual y queda registrado.</p>
     </div>
-    {% endif %}
-
-    <div class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label" for="cedula">Cédula</label>
-        {{ form.cedula }}
-        {% for error in form.cedula.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="nombre_completo">Nombre completo</label>
-        {{ form.nombre_completo }}
-        {% for error in form.nombre_completo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="correo">Correo electrónico</label>
-        {{ form.correo }}
-        {% for error in form.correo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="telefono">Teléfono</label>
-        {{ form.telefono }}
-        {% for error in form.telefono.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="especialidad">Especialidad</label>
-        {{ form.especialidad }}
-        {% for error in form.especialidad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="ciudad">Ciudad</label>
-        {{ form.ciudad }}
-        {% for error in form.ciudad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-12">
-        <label class="form-label" for="certificacion">Documento de certificación</label>
-        {{ form.documento_certificacion }}
-        <div class="form-text">Obligatorio. PDF o imagen, máximo 5 MB.</div>
-        {% for error in form.documento_certificacion.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="password">Contraseña</label>
-        {{ form.password }}
-        <ul class="fx-checklist" aria-live="polite">
-          <li data-regla="largo">Mínimo 8 caracteres</li>
-          <li data-regla="mayus">Una mayúscula</li>
-          <li data-regla="numero">Un número</li>
-          <li data-regla="simbolo">Un símbolo (por ejemplo ! # $ %)</li>
-        </ul>
-        {% for error in form.password.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="password2">Confirmar contraseña</label>
-        {{ form.password2 }}
-        {% for error in form.password2.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-      </div>
-    </div>
-
-    <div class="form-check my-4">
-      {{ form.terminos }}
-      <label class="form-check-label" for="terminos">Acepto los <a href="#" data-pronto>términos y condiciones</a></label>
-      {% for error in form.terminos.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-    </div>
-
-    <button class="btn btn-fx btn-lg w-100" type="submit">Enviar registro</button>
-  </form>
-  <p class="text-center mt-3">¿Buscas un técnico? <a href="{% url 'registro_cliente' %}">Crea tu cuenta de cliente</a></p>
+  </aside>
 </div>
 {% endblock %}

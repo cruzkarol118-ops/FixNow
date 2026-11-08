@@ -5,11 +5,13 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 {% endblock %}
 {% block content %}
-<div class="d-flex align-items-baseline justify-content-between mb-1">
-  <h1 class="h3 mb-0">Solicitudes cerca de ti</h1>
-  <span class="text-muted">{{ solicitudes|length }} visible{{ solicitudes|length|pluralize:"s" }}</span>
+<div class="fx-page-head">
+  <div>
+    <h1>Solicitudes cerca de ti</h1>
+    <p class="fx-page-head__meta mb-0">Solo pendientes visibles de tus especialidades (o dirigidas a ti). Acéptala si te sirve.</p>
+  </div>
+  <span class="fx-badge fx-badge--plain">{{ solicitudes|length }} visible{{ solicitudes|length|pluralize:"s" }}</span>
 </div>
-<p class="text-muted">Solo pendientes visibles de tus especialidades (o dirigidas a ti). Acéptala si te va.</p>
 
 {% if messages %}
   {% for message in messages %}
@@ -24,20 +26,29 @@
 
 <div class="d-grid gap-3" id="lista">
   {% for s in solicitudes %}
-  <article class="fx-card" data-id="{{ s.id }}" id="sol-{{ s.id }}">
-    <div class="d-flex justify-content-between align-items-start gap-2">
-      <h2 class="h6 fw-bold mb-1">#{{ s.id }} · {{ s.categoria }}</h2>
-      {% if s.dirigida %}<span class="fx-badge fx-badge--pendiente">Dirigida a ti</span>
-      {% elif s.urgencia == "Urgente" %}<span class="fx-badge">Urgente</span>{% endif %}
+  <article class="fx-order fx-order--pendiente" data-id="{{ s.id }}" id="sol-{{ s.id }}">
+    <div class="fx-order__head">
+      <div class="fx-order__id"><small>Orden</small> FN-{{ s.id }}</div>
+      <div class="d-flex align-items-center gap-2">
+        {% if s.dirigida %}<span class="fx-badge fx-badge--pendiente">Dirigida a ti</span>
+        {% elif s.urgencia == "Urgente" %}<span class="fx-badge fx-badge--urgente">Urgente</span>{% endif %}
+      </div>
     </div>
-    <p class="mb-1">{{ s.descripcion }}</p>
-    <div class="small text-muted">
-      <i class="bi bi-person"></i> {{ s.cliente }}
-      <span class="mx-1">|</span><i class="bi bi-geo-alt"></i> {{ s.direccion }}
-      <span class="mx-1">|</span><i class="bi bi-cash-coin"></i> Ofrece: {{ s.precio_txt }}
-      {% if s.km != None %}<span class="mx-1">|</span><i class="bi bi-signpost-2"></i> {{ s.km }} km{% endif %}
+    <div class="fx-order__body">
+      <div class="fw-semibold mb-1">{{ s.categoria }}</div>
+      <p class="fx-order__desc mb-2">{{ s.descripcion }}</p>
+      <div class="fx-meta-row">
+        <span><i class="bi bi-person"></i>{{ s.cliente }}</span>
+        <span class="fx-divider-v"></span>
+        <span><i class="bi bi-geo-alt"></i>{{ s.direccion }}</span>
+        <span class="fx-divider-v"></span>
+        <span><i class="bi bi-cash-coin"></i>Ofrece: {{ s.precio_txt }}</span>
+        {% if s.km != None %}<span class="fx-divider-v"></span><span><i class="bi bi-signpost-2"></i>{{ s.km }} km</span>{% endif %}
+      </div>
     </div>
-    <div class="mt-2 d-flex gap-2">
+    <div class="fx-order__foot flex-column align-items-stretch" style="gap: 6px;">
+      <a class="btn btn-line btn-sm" href="{% url 'solicitud_detalle' s.id %}?desde=mapa"><i class="bi bi-eye"></i> Ver detalle</a>
+      <div class="d-flex gap-2">
       <form method="post" action="{% url 'tecnico_aceptar' s.id %}" class="d-inline">
         {% csrf_token %}
         <button class="btn btn-fx btn-sm" type="submit">Aceptar</button>
@@ -46,10 +57,11 @@
         {% csrf_token %}
         <button class="btn btn-line btn-sm" type="submit">Rechazar</button>
       </form>
+      </div>
     </div>
   </article>
   {% empty %}
-  <div class="fx-card fx-empty">
+  <div class="fx-empty">
     <i class="bi bi-map"></i>
     <h3>No hay solicitudes visibles</h3>
     <p class="text-muted mb-0">Cuando un cliente publique en tus especialidades, aparecerá aquí.</p>

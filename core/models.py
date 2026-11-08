@@ -226,6 +226,43 @@ class Usuario(AbstractUser):
             self.perfil_tecnico.save(update_fields=["disponible"])
 
 
+class Direccion(models.Model):
+    """Direcciones del cliente (FN-2 extendido).
+    Un cliente puede registrar varias direcciones; la principal sincroniza los
+    campos de Usuario (direccion/latitud/longitud) para no romper distancias.
+    """
+
+    cliente = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="direcciones",
+        limit_choices_to={"rol": Usuario.Rol.CLIENTE},
+    )
+    etiqueta = models.CharField(
+        max_length=50, help_text="Ej. Casa, Oficina, Apartamento.")
+    direccion = models.CharField(max_length=255)
+    latitud = models.FloatField(null=True, blank=True)
+    longitud = models.FloatField(null=True, blank=True)
+    es_principal = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-es_principal", "etiqueta", "-fecha_creacion"]
+
+    def __str__(self):
+        return f"{self.etiqueta}: {self.direccion}"
+
+    def save(self, *args, **kwargs):
+        if self.es_principal:
+            type(self).objects.filter(cliente_id=self.cliente_id, es_principal=True).exclude(pk=self.pk).update(es_principal=False)
+        super().save(*args, **kwargs)
+        if self.es_principal and self.cliente_id:
+            self.cliente.direccion = self.direccion
+            self.cliente.latitud = self.latitud
+            self.cliente.longitud = self.longitud
+            self.cliente.save(update_fields=["direccion", "latitud", "longitud"])
+
+
 class PerfilTecnico(models.Model):
     """
     Datos exclusivos de un técnico (FN-8, FN-9, FN-10).

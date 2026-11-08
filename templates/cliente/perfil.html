@@ -5,97 +5,152 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 {% endblock %}
 {% block content %}
-<div class="fx-auth">
-  <h1>Mi perfil</h1>
-  <p class="text-muted">Actualiza tus datos de contacto. Tu dirección se usa para crear solicitudes.</p>
+<div class="fx-page-head">
+  <div>
+    <h1>Mi perfil</h1>
+    <p class="fx-page-head__meta mb-0">Tus datos de contacto y la dirección que usamos para calcular distancias.</p>
+  </div>
+  <a class="btn btn-danger-soft btn-sm" href="{% url 'cuenta_desactivar' %}">Desactivar mi cuenta</a>
+</div>
 
-  {% if messages %}
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
-    {% endfor %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<form method="post" class="fx-card needs-validation" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">
+    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
   {% endif %}
 
-  <form method="post" class="fx-card needs-validation" novalidate>
-    {% csrf_token %}
+  <fieldset class="fx-fieldset">
+    <legend>Identificación</legend>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="cedula">Cédula</label>
+        <input class="form-control" id="cedula" type="text" value="{{ cliente.cedula }}" readonly disabled>
+        <div class="form-text">La cédula no se puede modificar.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="correo">Correo electrónico</label>
+        <input class="form-control" id="correo" type="email" value="{{ cliente.correo }}" readonly disabled>
+        <div class="form-text">Para cambiarlo, usa el campo de abajo.</div>
+      </div>
+    </div>
+  </fieldset>
 
-    {% if form.non_field_errors %}
-    <div class="alert alert-danger" role="alert">
-      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  <fieldset class="fx-fieldset">
+    <legend>Datos de contacto</legend>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="nombre_completo">Nombre completo</label>
+        {{ form.nombre_completo }}
+        {% for error in form.nombre_completo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="correo_nuevo">Nuevo correo (opcional)</label>
+        {{ form.correo_nuevo }}
+        <div class="form-text">Te pediremos confirmar el cambio con un código y tu contraseña.</div>
+        {% for error in form.correo_nuevo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="telefono">Teléfono</label>
+        {{ form.telefono }}
+        {% for error in form.telefono.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento</label>
+        {{ form.fecha_nacimiento }}
+        {% for error in form.fecha_nacimiento.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </div>
     </div>
-    {% endif %}
+  </fieldset>
 
-    <div class="mb-3">
-      <label class="form-label" for="cedula">Cédula</label>
-      <input class="form-control" id="cedula" type="text" value="{{ cliente.cedula }}" readonly disabled>
-      <div class="form-text">La cédula no se puede modificar.</div>
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="correo">Correo electrónico</label>
-      <input class="form-control" id="correo" type="email" value="{{ cliente.correo }}" readonly disabled>
-      <div class="form-text">Para cambiarlo, digita el nuevo correo abajo: te pediremos confirmar el cambio con un código y tu contraseña.</div>
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="correo_nuevo">Nuevo correo (opcional)</label>
-      {{ form.correo_nuevo }}
-      {% for error in form.correo_nuevo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="nombre_completo">Nombre completo</label>
-      {{ form.nombre_completo }}
-      {% for error in form.nombre_completo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="telefono">Teléfono</label>
-      {{ form.telefono }}
-      {% for error in form.telefono.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="direccion">Dirección</label>
-      {{ form.direccion }}
-      <div class="form-text">Obligatoria: se exige para poder crear solicitudes.</div>
-      {% for error in form.direccion.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-    </div>
-    <div class="mb-4">
-      <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento</label>
-      {{ form.fecha_nacimiento }}
-      {% for error in form.fecha_nacimiento.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-    </div>
+  <button class="btn btn-fx btn-lg w-100" type="submit">Guardar cambios</button>
+</form>
 
-    {% include "partials/mapa_ubicacion.html" with lat=cliente.latitud lng=cliente.longitud %}
-    {{ form.latitud }}
-    {{ form.longitud }}
+<div class="fx-card mt-3" id="direcciones">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h2 class="h5 fw-semibold mb-1">Mis direcciones</h2>
+      <p class="text-muted small mb-0">Guarda varias y elige cuál usar para las distancias desde el botón de arriba.</p>
+    </div>
+    <a class="btn btn-fx btn-sm" href="{% url 'direccion_agregar' %}"><i class="bi bi-plus-circle"></i> Agregar</a>
+  </div>
 
-    <button class="btn btn-fx btn-lg w-100" type="submit">Guardar cambios</button>
-  </form>
+  {% if direcciones %}
+  <div class="d-grid gap-2">
+    {% for d in direcciones %}
+    <div class="fx-order {% if d.es_principal %}fx-order--en_curso{% endif %} p-3">
+      <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+        <div class="flex-grow-1" style="min-width:0">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <strong>{{ d.etiqueta }}</strong>
+            {% if d.es_principal %}<span class="fx-badge fx-badge--en_curso">Principal</span>{% endif %}
+          </div>
+          <div class="text-muted small">{{ d.direccion }}</div>
+          {% if d.latitud and d.longitud %}
+          <div class="text-muted small fx-num">{{ d.latitud|floatformat:5 }}, {{ d.longitud|floatformat:5 }}</div>
+          {% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-1">
+          {% if not d.es_principal %}
+          <form method="post" action="{% url 'direccion_principal' d.pk %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-line btn-sm" type="submit">Hacer principal</button>
+          </form>
+          {% endif %}
+          <a class="btn btn-line btn-sm" href="{% url 'direccion_editar' d.pk %}">Editar</a>
+          <form method="post" action="{% url 'direccion_eliminar' d.pk %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-danger-soft btn-sm" type="submit" onclick="return confirm('¿Eliminar esta dirección?');">Eliminar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="fx-empty">
+    <i class="bi bi-geo-alt"></i>
+    <h3>Aún no guardaste direcciones</h3>
+    <p>Agrega más para cambiar rápido sin editar el perfil cada vez.</p>
+  </div>
+  {% endif %}
+</div>
 
-  {% if pendiente_correo %}
-  {# CP-FN2-12: confirmación del cambio de correo pendiente #}
-  <form method="post" class="fx-card mt-3" novalidate>
-    {% csrf_token %}
-    <h2 class="h5">Confirma tu cambio de correo</h2>
-    <p class="text-muted small mb-2">
-      Nuevo correo propuesto: <strong>{{ pendiente_correo.correo }}</strong>.
-      Tu correo actual (<strong>{{ cliente.correo }}</strong>) sigue activo hasta que confirmes.
-    </p>
-    <p class="small">
-      Código de verificación enviado a tu nuevo correo (simulado):
-      <strong class="fs-5">{{ pendiente_correo.codigo }}</strong>
-    </p>
-    <div class="mb-3">
+{% if pendiente_correo %}
+{# CP-FN2-12: confirmación del cambio de correo pendiente #}
+<form method="post" class="fx-card mt-3" novalidate>
+  {% csrf_token %}
+  <h2 class="h5">Confirma tu cambio de correo</h2>
+  <p class="text-muted small mb-2">
+    Nuevo correo propuesto: <strong>{{ pendiente_correo.correo }}</strong>.
+    Tu correo actual (<strong>{{ cliente.correo }}</strong>) sigue activo hasta que confirmes.
+  </p>
+  <p class="small">
+    Código de verificación enviado a tu nuevo correo (simulado):
+    <strong class="fs-5 fx-num">{{ pendiente_correo.codigo }}</strong>
+  </p>
+  <div class="row g-3 mb-3">
+    <div class="col-sm-6">
       <label class="form-label" for="codigo">Código de verificación</label>
       <input class="form-control" id="codigo" name="codigo" inputmode="numeric" maxlength="6" required>
     </div>
-    <div class="mb-3">
+    <div class="col-sm-6">
       <label class="form-label" for="password">Tu contraseña actual</label>
       <input class="form-control" id="password" name="password" type="password" required>
     </div>
-    <input type="hidden" name="confirmar_correo" value="1">
-    <button class="btn btn-fx w-100" type="submit">Confirmar cambio de correo</button>
-  </form>
-  {% endif %}
-
-  <p class="text-center mt-4 mb-0"><a class="text-danger" href="{% url 'cuenta_desactivar' %}">Desactivar mi cuenta</a></p>
-</div>
+  </div>
+  <input type="hidden" name="confirmar_correo" value="1">
+  <button class="btn btn-ink w-100" type="submit">Confirmar cambio de correo</button>
+</form>
+{% endif %}
 {% endblock %}
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>

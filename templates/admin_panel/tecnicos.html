@@ -1,14 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Aprobar técnicos{% endblock %}
 {% block content %}
-<div class="d-flex align-items-baseline justify-content-between mb-1">
-  <h1 class="h3 mb-0">Técnicos por aprobar</h1>
-  <span class="text-muted" aria-live="polite">
-    {% if pendientes|length == 1 %}1 pendiente{% else %}{{ pendientes|length }} pendientes{% endif %}
-  </span>
+<div class="fx-page-head">
+  <div>
+    <h1>Técnicos por aprobar</h1>
+    <p class="fx-page-head__meta mb-0">Ordenados por fecha de registro, los más antiguos primero.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="fx-badge fx-badge--plain" aria-live="polite">
+      {% if pendientes|length == 1 %}1 pendiente{% else %}{{ pendientes|length }} pendientes{% endif %}
+    </span>
+    <a class="btn btn-line btn-sm" href="{% url 'admin_usuarios' %}">Gestión de usuarios</a>
+  </div>
 </div>
-<p class="text-muted">Ordenados por fecha de registro, los más antiguos primero.</p>
-<p><a href="{% url 'admin_usuarios' %}">Ir a gestión de usuarios (suspender / reactivar)</a></p>
 
 {% if messages %}
   {% for message in messages %}
@@ -19,45 +23,49 @@
 <div class="row g-3" id="lista">
   {% for t in pendientes %}
   <div class="col-lg-6">
-    <article class="fx-card h-100 d-flex flex-column">
-      <div class="d-flex align-items-center gap-3 mb-3">
-        <div class="fx-avatar" aria-hidden="true">{{ t.nombre_completo|slice:":1" }}</div>
-        <div class="flex-grow-1">
-          <h2 class="h5 fw-bold mb-0"><a href="{% url 'admin_ficha_tecnico' t.pk %}">{{ t.nombre_completo }}</a></h2>
-          <div class="small text-muted">Registrado el {{ t.date_joined|date:"d/m/Y H:i" }}</div>
+    <article class="fx-order fx-order--pendiente h-100 d-flex flex-column">
+      <div class="fx-order__head">
+        <div class="d-flex align-items-center gap-3" style="min-width:0;">
+          <div class="fx-avatar" aria-hidden="true">{{ t.nombre_completo|slice:":1" }}</div>
+          <div style="min-width:0">
+            <div class="fx-order__id"><small>Solicitud</small> <a class="text-decoration-none" href="{% url 'admin_ficha_tecnico' t.pk %}">{{ t.nombre_completo }}</a></div>
+            <div class="small text-muted">Registrado el {{ t.date_joined|date:"d/m/Y H:i" }}</div>
+          </div>
         </div>
         <span class="fx-badge fx-badge--pendiente">Pendiente</span>
       </div>
+      <div class="fx-order__body flex-grow-1">
+        <dl class="fx-order__grid">
+          <div><dt>Cédula</dt><dd>{{ t.cedula }}</dd></div>
+          <div><dt>Teléfono</dt><dd>{{ t.telefono }}</dd></div>
+          <div style="grid-column: 1 / -1;"><dt>Correo</dt><dd class="text-break">{{ t.correo }}</dd></div>
+          <div><dt>Especialidad</dt><dd>{{ t.perfil_tecnico.get_especialidad_display }}</dd></div>
+          <div><dt>Ciudad</dt><dd>{{ t.perfil_tecnico.ciudad }}</dd></div>
+        </dl>
 
-      <dl class="row small mb-3">
-        <dt class="col-5 text-muted fw-normal">Cédula</dt><dd class="col-7 fw-semibold">{{ t.cedula }}</dd>
-        <dt class="col-5 text-muted fw-normal">Correo</dt><dd class="col-7 fw-semibold text-break">{{ t.correo }}</dd>
-        <dt class="col-5 text-muted fw-normal">Teléfono</dt><dd class="col-7 fw-semibold">{{ t.telefono }}</dd>
-        <dt class="col-5 text-muted fw-normal">Especialidad</dt><dd class="col-7 fw-semibold">{{ t.perfil_tecnico.get_especialidad_display }}</dd>
-        <dt class="col-5 text-muted fw-normal">Ciudad</dt><dd class="col-7 fw-semibold mb-0">{{ t.perfil_tecnico.ciudad }}</dd>
-      </dl>
+        {% if t.motivo_rechazo %}
+        <div class="alert alert-warning small mt-3" role="note">Observación previa: {{ t.motivo_rechazo }}</div>
+        {% endif %}
 
-      {% if t.motivo_rechazo %}
-      <div class="alert alert-warning small" role="note">Observación previa: {{ t.motivo_rechazo }}</div>
-      {% endif %}
-
-      {% if t.perfil_tecnico.documento_certificacion %}
-      <a class="btn btn-line btn-sm align-self-start mb-3" href="{{ t.perfil_tecnico.documento_certificacion.url }}" target="_blank" rel="noopener">
-        <i class="bi bi-file-earmark-text"></i> Ver certificación
-      </a>
-      {% else %}
-      <p class="small text-muted">Sin documento de certificación adjunto.</p>
-      {% endif %}
-
-      <div class="d-flex flex-wrap gap-2 mt-auto">
+        <div class="mt-3">
+          {% if t.perfil_tecnico.documento_certificacion %}
+          <a class="btn btn-line btn-sm" href="{{ t.perfil_tecnico.documento_certificacion.url }}" target="_blank" rel="noopener">
+            <i class="bi bi-file-earmark-text"></i> Ver certificación
+          </a>
+          {% else %}
+          <span class="small text-muted">Sin documento de certificación adjunto.</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="fx-order__foot">
         <form method="post" action="{% url 'admin_tecnicos' %}" class="flex-fill d-flex">
           {% csrf_token %}
           <input type="hidden" name="tecnico_id" value="{{ t.pk }}">
           <input type="hidden" name="accion" value="aprobar">
-          <button class="btn btn-fx flex-fill" type="submit">Aprobar</button>
+          <button class="btn btn-fx btn-sm flex-fill" type="submit">Aprobar</button>
         </form>
-        <button class="btn btn-line flex-fill" data-bs-toggle="modal" data-bs-target="#modalMotivo-{{ t.pk }}" data-modo="info">Pedir información</button>
-        <button class="btn btn-danger-soft flex-fill" data-bs-toggle="modal" data-bs-target="#modalMotivo-{{ t.pk }}" data-modo="rechazar">Rechazar</button>
+        <button class="btn btn-line btn-sm flex-fill" data-bs-toggle="modal" data-bs-target="#modalMotivo-{{ t.pk }}" data-modo="info">Pedir información</button>
+        <button class="btn btn-danger-soft btn-sm flex-fill" data-bs-toggle="modal" data-bs-target="#modalMotivo-{{ t.pk }}" data-modo="rechazar">Rechazar</button>
       </div>
     </article>
   </div>
@@ -92,10 +100,10 @@
     </div>
   </div>
   {% empty %}
-  <div class="fx-card fx-empty">
+  <div class="fx-empty">
     <i class="bi bi-patch-check"></i>
     <h3>No hay técnicos pendientes</h3>
-    <p class="text-muted mb-0">Cuando alguien se registre, aparecerá aquí para revisión.</p>
+    <p>Cuando alguien se registre, aparecerá aquí para revisión.</p>
   </div>
   {% endfor %}
 </div>

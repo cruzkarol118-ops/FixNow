@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from core.ia import analizar_sentimiento, predecir_categoria
 from core.models import (
-    Calificacion, Comision, DocumentoTecnico, Notificacion, Pago,
+    Calificacion, Comision, Direccion, DocumentoTecnico, Notificacion, Pago,
     PerfilTecnico, Solicitud, Usuario,
 )
 
@@ -647,13 +647,21 @@ class BloqueHITest(_Base):
         self.assertContains(resp, "Corto en la sala")
 
     def test_perfil_expone_coords_con_punto_para_el_mapa(self):
-        """Regresión: es-co localiza con coma; el mapa JS necesita punto."""
+        """Regresión: es-co localiza con coma; el mapa JS necesita punto.
+
+        Con el gestor multi-dirección el mapa vive en la edición de cada
+        dirección, no en el perfil principal.
+        """
         cli = self._cliente()
         cli.latitud = 4.679621
         cli.longitud = -74.08699
         cli.save(update_fields=["latitud", "longitud"])
+        direccion = Direccion.objects.create(
+            cliente=cli, etiqueta="Casa", direccion=cli.direccion,
+            latitud=cli.latitud, longitud=cli.longitud, es_principal=True,
+        )
         self.client.force_login(cli)
-        resp = self.client.get(reverse("cliente_perfil"))
+        resp = self.client.get(reverse("direccion_editar", args=[direccion.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'data-lat="4.679621"')
         self.assertContains(resp, 'data-lng="-74.08699"')

@@ -111,6 +111,7 @@
         <button type="button" class="{% if datos.urgencia == 'urgente' %}is-on{% endif %}" role="radio" aria-checked="{% if datos.urgencia == 'urgente' %}true{% else %}false{% endif %}" data-valor="urgente">Urgente</button>
       </div>
       <input type="hidden" name="urgencia" id="urgencia-valor" value="{{ datos.urgencia|default:'normal' }}">
+      <div class="form-text">Normal: orden común. Urgente: aparece primero en la bandeja del técnico y se marca con distintivo rojo.</div>
     </div>
 
     <button class="btn btn-fx btn-lg w-100" type="submit">Buscar técnicos</button>

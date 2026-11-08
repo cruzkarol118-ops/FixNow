@@ -1,3 +1,4 @@
+from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
@@ -10,6 +11,22 @@ urlpatterns = [
     path("cuenta/password/", views.cambiar_password, name="cambiar_password"),
     path("registro/", views.registro_cliente, name="registro_cliente"),
     path("registro/tecnico/", views.registro_tecnico, name="registro_tecnico"),
+    path("terminos/", views.terminos, name="terminos"),
+    # Recuperación de contraseña (link por correo, Django built-in).
+    path("password/reset/", auth_views.PasswordResetView.as_view(
+        template_name="publico/password_reset_form.html"),
+         name="password_reset"),
+    path("password/reset/done/", auth_views.PasswordResetDoneView.as_view(
+        template_name="publico/password_reset_done.html"),
+         name="password_reset_done"),
+    path("password/reset/<uidb64>/<token>/",
+         auth_views.PasswordResetConfirmView.as_view(
+             template_name="publico/password_reset_confirm.html"),
+         name="password_reset_confirm"),
+    path("password/reset/complete/",
+         auth_views.PasswordResetCompleteView.as_view(
+             template_name="publico/password_reset_complete.html"),
+         name="password_reset_complete"),
     # Cliente
     path("cliente/", views.cliente_inicio, name="cliente_inicio"),
     path("cliente/solicitud/nueva/", views.solicitud_nueva, name="solicitud_nueva"),
@@ -25,6 +42,18 @@ urlpatterns = [
          name="cuenta_desactivar"),
     path("cliente/historial/", views.cliente_historial, name="cliente_historial"),
     path("cliente/perfil/", views.cliente_perfil, name="cliente_perfil"),
+    path("cliente/direcciones/agregar/", views.direccion_agregar,
+         name="direccion_agregar"),
+    path("cliente/direcciones/<int:pk>/editar/", views.direccion_editar,
+         name="direccion_editar"),
+    path("cliente/direcciones/<int:pk>/eliminar/", views.direccion_eliminar,
+         name="direccion_eliminar"),
+    path("cliente/direcciones/<int:pk>/principal/", views.direccion_principal,
+         name="direccion_principal"),
+    path("cliente/direcciones/<int:pk>/seleccionar/", views.direccion_seleccionar,
+         name="direccion_seleccionar"),
+    path("cliente/solicitud/<int:pk>/detalle/", views.solicitud_detalle,
+         name="solicitud_detalle"),
     path("cliente/solicitud/<int:pk>/cancelar/", views.solicitud_cancelar,
          name="solicitud_cancelar"),
     path("cliente/solicitud/<int:pk>/calificar/", views.solicitud_calificar,

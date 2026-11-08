@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Pagar solicitud #{{ solicitud.pk }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Pagar solicitud #{{ solicitud.pk }} · {{ solicitud.get_categoria_display }}</h1>
-<p class="text-muted">{{ solicitud.descripcion }}</p>
+<div class="fx-page-head">
+  <div>
+    <h1>Pagar solicitud FN-{{ solicitud.pk }}</h1>
+    <p class="fx-page-head__meta mb-0">{{ solicitud.get_categoria_display }} · {{ solicitud.descripcion }}</p>
+  </div>
+  <a class="btn btn-line btn-sm" href="{% url 'cliente_historial' %}">Volver al historial</a>
+</div>
 
 {# E2 / FN-17: aviso explícito de que esto es una SIMULACIÓN para demo #}
 <div class="alert alert-warning" role="note">
@@ -19,60 +24,81 @@
   {% endfor %}
 {% endif %}
 
-<div class="fx-card mb-3">
-  <div class="d-flex justify-content-between align-items-center">
-    <span class="text-muted">Monto a pagar (definido por el técnico al finalizar)</span>
-    <strong class="h4 mb-0">${{ solicitud.monto_final }}</strong>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="fx-order fx-order--finalizada">
+      <div class="fx-order__head">
+        <div class="fx-order__id"><small>Orden</small> FN-{{ solicitud.pk }}</div>
+        <span class="fx-badge fx-badge--pendiente">Por pagar</span>
+      </div>
+      <div class="fx-order__body">
+        <dl class="fx-order__grid">
+          <div><dt>Técnico</dt><dd>{% if solicitud.tecnico %}{{ solicitud.tecnico.nombre_completo }}{% else %}Sin asignar{% endif %}</dd></div>
+          <div><dt>Categoría</dt><dd>{{ solicitud.get_categoria_display }}</dd></div>
+        </dl>
+        <hr class="fx-rule">
+        <div class="d-flex justify-content-between align-items-baseline">
+          <span class="text-muted small">Monto a pagar</span>
+          <strong class="fx-stat">${{ solicitud.monto_final }}</strong>
+        </div>
+        <div class="small text-muted mt-1">Definido por el técnico al finalizar el servicio.</div>
+      </div>
+    </div>
+
+    {% if pago and pago.estado == "fallido" %}
+    <div class="alert alert-danger mt-3 mb-0" role="note">
+      Tu intento anterior con {{ pago.get_medio_pago_display }} falló: {{ pago.motivo_fallo }}
+      Puedes reintentarlo abajo (se reutiliza el mismo registro, sin duplicar).
+    </div>
+    {% endif %}
   </div>
-  <div class="small text-muted mt-1">
-    Técnico: {% if solicitud.tecnico %}{{ solicitud.tecnico.nombre_completo }}{% else %}Sin asignar{% endif %}
+
+  <div class="col-lg-7">
+    <form class="fx-card" method="post" action="{% url 'solicitud_pagar' solicitud.pk %}">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <fieldset class="fx-fieldset">
+        <legend>Medio de pago simulado</legend>
+        <div class="mb-3">
+          <label class="form-label" for="medio">{{ form.medio.label }}</label>
+          {{ form.medio }}
+          {% if form.medio.errors %}<div class="text-danger small">{{ form.medio.errors }}</div>{% endif %}
+        </div>
+
+        <div id="grupoUltimos4" hidden>
+          <label class="form-label" for="ultimos4">{{ form.ultimos4.label }}</label>
+          {{ form.ultimos4 }}
+          <div class="form-text">{{ form.ultimos4.help_text }}</div>
+          {% if form.ultimos4.errors %}<div class="text-danger small">{{ form.ultimos4.errors }}</div>{% endif %}
+        </div>
+      </fieldset>
+
+      <fieldset class="fx-fieldset">
+        <legend>Comprobante</legend>
+        <div class="mb-3">
+          <label class="form-label" for="motivo">{{ form.motivo.label }}</label>
+          {{ form.motivo }}
+          {% if form.motivo.errors %}<div class="text-danger small">{{ form.motivo.errors }}</div>{% endif %}
+        </div>
+      </fieldset>
+
+      {{ form.resultado }}
+      {% if form.resultado.errors %}<div class="text-danger small mb-2">{{ form.resultado.errors }}</div>{% endif %}
+
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-fx" type="submit" data-resultado="exito">
+          <i class="bi bi-check-circle"></i> Simular pago exitoso
+        </button>
+        <button class="btn btn-line" type="submit" data-resultado="fallo">
+          <i class="bi bi-x-circle"></i> Simular pago fallido
+        </button>
+      </div>
+    </form>
   </div>
-  {% if pago and pago.estado == "fallido" %}
-  <div class="alert alert-danger mt-3 mb-0" role="note">
-    Tu intento anterior con {{ pago.get_medio_pago_display }} falló: {{ pago.motivo_fallo }}
-    Puedes reintentarlo abajo (se reutiliza el mismo registro, sin duplicar).
-  </div>
-  {% endif %}
 </div>
-
-<form class="fx-card" method="post" action="{% url 'solicitud_pagar' solicitud.pk %}">
-  {% csrf_token %}
-  {% if form.non_field_errors %}
-  <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
-  {% endif %}
-
-  <div class="mb-3">
-    <label class="form-label" for="medio">{{ form.medio.label }}</label>
-    {{ form.medio }}
-    {% if form.medio.errors %}<div class="text-danger small">{{ form.medio.errors }}</div>{% endif %}
-  </div>
-
-  <div class="mb-3" id="grupoUltimos4" hidden>
-    <label class="form-label" for="ultimos4">{{ form.ultimos4.label }}</label>
-    {{ form.ultimos4 }}
-    <div class="form-text">{{ form.ultimos4.help_text }}</div>
-    {% if form.ultimos4.errors %}<div class="text-danger small">{{ form.ultimos4.errors }}</div>{% endif %}
-  </div>
-
-  <div class="mb-3">
-    <label class="form-label" for="motivo">{{ form.motivo.label }}</label>
-    {{ form.motivo }}
-    {% if form.motivo.errors %}<div class="text-danger small">{{ form.motivo.errors }}</div>{% endif %}
-  </div>
-
-  {{ form.resultado }}
-  {% if form.resultado.errors %}<div class="text-danger small mb-2">{{ form.resultado.errors }}</div>{% endif %}
-
-  <div class="d-flex flex-wrap gap-2">
-    <button class="btn btn-fx" type="submit" data-resultado="exito">
-      <i class="bi bi-check-circle"></i> Simular pago exitoso
-    </button>
-    <button class="btn btn-line" type="submit" data-resultado="fallo">
-      <i class="bi bi-x-circle"></i> Simular pago fallido
-    </button>
-    <a class="btn btn-line" href="{% url 'cliente_historial' %}">Volver al historial</a>
-  </div>
-</form>
 {% endblock %}
 
 {% block extra_js %}

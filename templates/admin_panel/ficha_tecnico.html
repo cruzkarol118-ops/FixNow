@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Ficha de {{ tecnico.nombre_completo }}{% endblock %}
 {% block content %}
-<p><a href="{% url 'admin_tecnicos' %}">&larr; Volver a aprobación de técnicos</a></p>
-<div class="d-flex align-items-center gap-3 mb-3">
-  <div class="fx-avatar" aria-hidden="true">{{ tecnico.nombre_completo|slice:":1" }}</div>
-  <div class="flex-grow-1">
-    <h1 class="h3 mb-0">{{ tecnico.nombre_completo }}</h1>
-    <div class="small text-muted">Registrado el {{ tecnico.date_joined|date:"d/m/Y H:i" }}</div>
+<p class="small mb-2"><a href="{% url 'admin_tecnicos' %}"><i class="bi bi-arrow-left"></i> Volver a aprobación de técnicos</a></p>
+
+<div class="fx-page-head">
+  <div class="d-flex align-items-center gap-3">
+    <div class="fx-avatar" aria-hidden="true">{{ tecnico.nombre_completo|slice:":1" }}</div>
+    <div>
+      <h1 class="mb-1">{{ tecnico.nombre_completo }}</h1>
+      <p class="fx-page-head__meta mb-0">Registrado el {{ tecnico.date_joined|date:"d/m/Y H:i" }}</p>
+    </div>
   </div>
-  <span class="fx-badge">{{ tecnico.get_estado_display }}</span>
+  <span class="fx-badge {% if tecnico.estado == 'pendiente_aprobacion' %}fx-badge--pendiente{% elif tecnico.estado == 'activo' %}fx-badge--finalizada{% else %}fx-badge--cancelada{% endif %}">{{ tecnico.get_estado_display }}</span>
 </div>
 
 {% if messages %}
@@ -19,32 +22,38 @@
 
 <div class="row g-3">
   <div class="col-lg-6">
-    <article class="fx-card h-100">
-      <h2 class="h5">Datos y perfil</h2>
-      <dl class="row small mb-0">
-        <dt class="col-5 text-muted fw-normal">Cédula</dt><dd class="col-7 fw-semibold">{{ tecnico.cedula }}</dd>
-        <dt class="col-5 text-muted fw-normal">Correo</dt><dd class="col-7 fw-semibold text-break">{{ tecnico.correo }}</dd>
-        <dt class="col-5 text-muted fw-normal">Teléfono</dt><dd class="col-7 fw-semibold">{{ tecnico.telefono }}</dd>
-        <dt class="col-5 text-muted fw-normal">Especialidad</dt><dd class="col-7 fw-semibold">{{ perfil.get_especialidad_display }}</dd>
-        <dt class="col-5 text-muted fw-normal">Ciudad</dt><dd class="col-7 fw-semibold">{{ perfil.ciudad }}</dd>
-        <dt class="col-5 text-muted fw-normal">Zona</dt><dd class="col-7 fw-semibold">{{ perfil.zona_cobertura|default:"—" }}</dd>
-        <dt class="col-5 text-muted fw-normal">Precio</dt><dd class="col-7 fw-semibold">{{ perfil.precio_referencia_txt }}</dd>
-        <dt class="col-5 text-muted fw-normal">Disponible</dt><dd class="col-7 fw-semibold">{% if perfil.disponible %}Sí{% else %}No{% endif %}</dd>
-        <dt class="col-5 text-muted fw-normal">Calificación</dt><dd class="col-7 fw-semibold">{{ perfil.calificacion_promedio }} ({{ perfil.total_calificaciones }})</dd>
-        <dt class="col-5 text-muted fw-normal">Servicios</dt><dd class="col-7 fw-semibold mb-0">{{ n_finalizadas }} finalizados · {{ n_en_curso }} en curso</dd>
-      </dl>
-      {% if tecnico.motivo_rechazo %}
-      <div class="alert alert-warning small mt-3 mb-0" role="note">Observación: {{ tecnico.motivo_rechazo }}</div>
-      {% endif %}
-      {% if tecnico.motivo_suspension %}
-      <div class="alert alert-danger small mt-3 mb-0" role="note">Suspensión: {{ tecnico.motivo_suspension }}</div>
-      {% endif %}
+    <article class="fx-order fx-order--pendiente h-100">
+      <div class="fx-order__head">
+        <div class="fx-order__id"><small>Ficha</small> Técnico</div>
+        <span class="fx-badge fx-badge--plain">Datos</span>
+      </div>
+      <div class="fx-order__body">
+        <dl class="fx-order__grid">
+          <div><dt>Cédula</dt><dd>{{ tecnico.cedula }}</dd></div>
+          <div><dt>Teléfono</dt><dd>{{ tecnico.telefono }}</dd></div>
+          <div style="grid-column: 1 / -1;"><dt>Correo</dt><dd class="text-break">{{ tecnico.correo }}</dd></div>
+          <div><dt>Especialidad</dt><dd>{{ perfil.get_especialidad_display }}</dd></div>
+          <div><dt>Ciudad</dt><dd>{{ perfil.ciudad }}</dd></div>
+          <div><dt>Zona</dt><dd>{{ perfil.zona_cobertura|default:"—" }}</dd></div>
+          <div><dt>Precio</dt><dd>{{ perfil.precio_referencia_txt }}</dd></div>
+          <div><dt>Disponible</dt><dd>{% if perfil.disponible %}Sí{% else %}No{% endif %}</dd></div>
+          <div><dt>Calificación</dt><dd>{{ perfil.calificacion_promedio }} ({{ perfil.total_calificaciones }})</dd></div>
+          <div style="grid-column: 1 / -1;"><dt>Servicios</dt><dd>{{ n_finalizadas }} finalizados · {{ n_en_curso }} en curso</dd></div>
+        </dl>
+        {% if tecnico.motivo_rechazo %}
+        <div class="alert alert-warning small mt-3 mb-0" role="note">Observación: {{ tecnico.motivo_rechazo }}</div>
+        {% endif %}
+        {% if tecnico.motivo_suspension %}
+        <div class="alert alert-danger small mt-3 mb-0" role="note">Suspensión: {{ tecnico.motivo_suspension }}</div>
+        {% endif %}
+      </div>
     </article>
   </div>
+
   <div class="col-lg-6">
     <article class="fx-card h-100">
       <h2 class="h5">Documentos ({{ documentos|length|add:1 }})</h2>
-      <ul class="list-unstyled mb-0 d-grid gap-2">
+      <ul class="fx-list-clean">
         <li>
           {% if perfil.documento_certificacion %}
           <a class="btn btn-line btn-sm" href="{{ perfil.documento_certificacion.url }}" target="_blank" rel="noopener">
@@ -59,10 +68,10 @@
           <a class="btn btn-line btn-sm" href="{{ d.archivo.url }}" target="_blank" rel="noopener">
             <i class="bi bi-file-earmark-text"></i> {{ d.nombre }}
           </a>
-          <span class="small text-muted">{{ d.fecha_subida|date:"d/m/Y" }} · acredita: {{ d.get_especialidad_display }} · {{ d.get_estado_display }}</span>
+          <div class="small text-muted mt-1">{{ d.fecha_subida|date:"d/m/Y" }} · acredita: {{ d.get_especialidad_display }} · {{ d.get_estado_display }}</div>
           {% if d.motivo %}<div class="small text-muted">Motivo: {{ d.motivo }}</div>{% endif %}
           {% if d.estado == "pendiente" %}
-          <span class="d-flex gap-2 mt-1">
+          <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
             <form method="post" action="{% url 'documento_decidir' %}" class="d-inline">
               {% csrf_token %}
               <input type="hidden" name="documento_id" value="{{ d.pk }}">
@@ -76,7 +85,7 @@
               <input class="form-control form-control-sm" type="text" name="motivo" maxlength="300" placeholder="Motivo del rechazo" required style="max-width:220px">
               <button class="btn btn-danger-soft btn-sm" type="submit">Rechazar</button>
             </form>
-          </span>
+          </div>
           {% endif %}
         </li>
         {% endfor %}
@@ -130,15 +139,15 @@
 <article class="fx-card mt-3">
   <h2 class="h5">Reseñas ({{ resenas|length }})</h2>
   {% for r in resenas %}
-  <div class="border-top pt-2 mt-2 small">
+  <div class="border-top pt-3 mt-3 small">
     <div class="text-warning" aria-label="{{ r.estrellas }} de 5">
       {% for n in "12345" %}<i class="bi {% if forloop.counter <= r.estrellas %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}
       <span class="text-muted">({{ r.estrellas }}/5) · {{ r.fecha_creacion|date:"d M Y" }}</span>
-      {% if r.oculta %}<span class="fx-badge">Oculta</span>{% endif %}
+      {% if r.oculta %}<span class="fx-badge fx-badge--cancelada">Oculta</span>{% endif %}
       {% if r.revision_admin %}<span class="fx-badge fx-badge--pendiente">En revisión</span>{% endif %}
     </div>
-    {% if r.comentario %}<p class="mb-1">{{ r.comentario }}</p>{% endif %}
-    <div class="text-muted">Solicitud #{{ r.solicitud_id }} · {{ r.solicitud.cliente.nombre_completo }}</div>
+    {% if r.comentario %}<p class="mb-1 mt-2">{{ r.comentario }}</p>{% endif %}
+    <div class="text-muted">Orden FN-{{ r.solicitud_id }} · {{ r.solicitud.cliente.nombre_completo }}</div>
   </div>
   {% empty %}
   <p class="text-muted mb-0">Aún no tiene reseñas.</p>
