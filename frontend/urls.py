@@ -1,6 +1,8 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
+from core.forms import PasswordResetFixNowForm
+
 from . import views
 
 urlpatterns = [
@@ -14,7 +16,8 @@ urlpatterns = [
     path("terminos/", views.terminos, name="terminos"),
     # Recuperación de contraseña (link por correo, Django built-in).
     path("password/reset/", auth_views.PasswordResetView.as_view(
-        template_name="publico/password_reset_form.html"),
+        template_name="publico/password_reset_form.html",
+        form_class=PasswordResetFixNowForm),
          name="password_reset"),
     path("password/reset/done/", auth_views.PasswordResetDoneView.as_view(
         template_name="publico/password_reset_done.html"),

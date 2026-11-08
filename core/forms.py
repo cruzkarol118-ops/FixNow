@@ -2,7 +2,7 @@ import re
 from datetime import date
 
 from django import forms
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -235,6 +235,19 @@ class CambioPasswordForm(PasswordChangeForm):
         if password:
             _validar_politica_password(password)
         return password
+
+
+class PasswordResetFixNowForm(PasswordResetForm):
+    """Reset por correo: Usuario no tiene campo `email` (usa `correo`).
+
+    PasswordResetForm de Django filtra por `email`, que en FixNow siempre es
+    None, por eso en producción daba FieldError. Aquí se filtra por `correo`.
+    """
+
+    def get_users(self, email):
+        email = email.strip().lower()
+        activos = Usuario.objects.filter(correo__iexact=email, is_active=True)
+        return [u for u in activos if u.has_usable_password()]
 
 
 class PerfilClienteForm(forms.ModelForm):
