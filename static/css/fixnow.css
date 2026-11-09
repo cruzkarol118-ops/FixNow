@@ -52,6 +52,7 @@
 * { scrollbar-width: thin; scrollbar-color: #C4CAD3 transparent; }
 
 html { scroll-behavior: smooth; }
+img, video, canvas { max-width: 100%; height: auto; }
 
 body {
   font-family: var(--fx-ui);
@@ -1142,6 +1143,7 @@ textarea.form-control { min-height: 112px; }
 /* ---------- Carrusel de trabajos hechos (landing) ---------- */
 .fx-works { margin-top: 28px; }
 .fx-works .fx-overline { color: var(--fx-ink); margin-bottom: 20px; }
+.fx-works__hint { display: none; }
 .fx-works__scroller {
   display: flex;
   gap: 12px;
@@ -1466,7 +1468,8 @@ textarea.form-control { min-height: 112px; }
   .fx-hero__media .fx-order { position: relative; left: auto; bottom: auto; transform: none; width: 100%; margin-top: -24px; }
   .fx-assurances { grid-template-columns: 1fr; }
   .fx-assurances li { border-right: 0; border-bottom: 1px solid var(--fx-line); padding: 10px 0; }
-  .fx-work { flex-basis: 72%; }
+  .fx-work { flex-basis: 100%; }
+  .fx-works__hint { display: block; margin: -12px 0 10px; color: var(--fx-muted); font-size: .75rem; }
   .fx-assurances li + li { padding-left: 0; }
   .fx-assurances li:last-child { border-bottom: 0; }
   .fx-facts { grid-template-columns: 1fr 1fr; }
