@@ -189,15 +189,21 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "cliente_inicio"
 LOGOUT_REDIRECT_URL = "landing"
 
-# Correo: Brevo (SMTP real) si hay host configurado; si no, consola local.
-# En Railway van las mismas variables (nunca subas la clave a git).
-EMAIL_HOST = config("EMAIL_HOST", default="")
-if EMAIL_HOST:
+# Correo: priorizar la API HTTPS de Brevo (evita conexiones SMTP bloqueadas).
+# En Railway configura BREVO_API_KEY; nunca subas la clave al repositorio.
+BREVO_API_KEY = config("BREVO_API_KEY", default="")
+if BREVO_API_KEY:
+    EMAIL_BACKEND = "core.email_backends.BrevoAPIEmailBackend"
+    EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=15, cast=int)
+elif config("EMAIL_HOST", default=""):
+    # Compatibilidad SMTP para entornos donde la salida SMTP esté disponible.
+    EMAIL_HOST = config("EMAIL_HOST", default="")
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
     EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
     EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+    EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=15, cast=int)
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@fixnow.local")
