@@ -17,6 +17,7 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body class="fx-rol-{{ rol|default:'publico' }}">
+  <form style="display:none" aria-hidden="true">{% csrf_token %}</form>
   <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 px-3 py-2 bg-white border rounded" href="#contenido">Saltar al contenido</a>
 
   {% url 'cliente_inicio' as u_cli_inicio %}
@@ -156,6 +157,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{% static 'js/fixnow.js' %}"></script>
+  <script src="{% static 'js/chatbot.js' %}"></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>
