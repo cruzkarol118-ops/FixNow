@@ -96,15 +96,88 @@
     zIndexOffset: 1000,
   }).addTo(mapa).bindTooltip("Tú estás aquí");
 
-  const pin = L.divIcon({ className: "", html: '<div class="fx-pin"><i class="bi bi-person-fill"></i></div>', iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -34] });
+  // Agrupa solicitudes que comparten la ubicación del cliente. El contador
+  // sigue reflejando solicitudes; un pin representa una ubicación, no una orden.
+  const grupos = new Map();
   conCoords.forEach((s) => {
-    const dist = s.km != null ? `${String(s.km).replace(".", ",")} km` : "distancia n/d";
-    L.marker([s.lat, s.lng], { icon: pin }).bindPopup(
-      `<strong>#${s.id} · ${s.categoria}</strong><br>${s.cliente}<br>${s.descripcion}<br>` +
-      `Ofrece: ${s.precio_txt} · ${dist}<br>` +
-      `<button class="btn btn-fx btn-sm mt-2" data-aceptar="${s.id}">Aceptar</button> ` +
-      `<a class="btn btn-line btn-sm mt-2" href="#sol-${s.id}" data-resaltar="${s.id}">Ver solicitud abajo</a>`,
-    ).addTo(mapa);
+    const llave = `${Number(s.lat).toFixed(6)},${Number(s.lng).toFixed(6)}`;
+    if (!grupos.has(llave)) grupos.set(llave, []);
+    grupos.get(llave).push(s);
+  });
+
+  const crearPopup = (solicitudesGrupo) => {
+    const contenido = document.createElement("div");
+    contenido.className = "fx-map-popup-list";
+    contenido.style.maxHeight = "320px";
+    contenido.style.overflowY = "auto";
+
+    const encabezado = document.createElement("strong");
+    encabezado.textContent = `${solicitudesGrupo.length} solicitud${solicitudesGrupo.length === 1 ? "" : "es"} en esta ubicación`;
+    contenido.appendChild(encabezado);
+
+    solicitudesGrupo.forEach((s) => {
+      const item = document.createElement("section");
+      item.className = "border-top mt-2 pt-2";
+
+      const titulo = document.createElement("strong");
+      titulo.textContent = `#${s.id} · ${s.categoria}`;
+      item.appendChild(titulo);
+
+      const cliente = document.createElement("div");
+      cliente.textContent = s.cliente;
+      item.appendChild(cliente);
+
+      const descripcion = document.createElement("p");
+      descripcion.className = "mb-1";
+      descripcion.textContent = s.descripcion;
+      item.appendChild(descripcion);
+
+      const meta = document.createElement("small");
+      const distancia = s.km != null ? `${String(s.km).replace(".", ",")} km` : "distancia n/d";
+      meta.textContent = `Ofrece: ${s.precio_txt} · ${distancia}`;
+      item.appendChild(meta);
+
+      const acciones = document.createElement("div");
+      actionsClass(acciones);
+      const aceptar = document.createElement("button");
+      aceptar.type = "button";
+      aceptar.className = "btn btn-fx btn-sm";
+      aceptar.dataset.aceptar = s.id;
+      aceptar.textContent = "Aceptar";
+      acciones.appendChild(aceptar);
+
+      const ver = document.createElement("a");
+      ver.className = "btn btn-line btn-sm";
+      ver.href = `#sol-${s.id}`;
+      ver.dataset.resaltar = s.id;
+      ver.textContent = "Ver solicitud abajo";
+      acciones.appendChild(ver);
+      item.appendChild(acciones);
+      contenido.appendChild(item);
+    });
+    return contenido;
+  };
+
+  // Mantiene este helper pequeño para no interpolar texto de usuarios en HTML.
+  function actionsClass(elemento) {
+    elemento.className = "d-flex flex-wrap gap-2 mt-2";
+  }
+
+  grupos.forEach((solicitudesGrupo, llave) => {
+    const [lat, lng] = llave.split(",").map(Number);
+    const cantidad = solicitudesGrupo.length;
+    const icono = L.divIcon({
+      className: "",
+      html: cantidad > 1
+        ? `<div class="fx-pin fx-pin--group"><span>${cantidad}</span></div>`
+        : '<div class="fx-pin"><i class="bi bi-person-fill"></i></div>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 34],
+      popupAnchor: [0, -34],
+    });
+    L.marker([lat, lng], { icon: icono })
+      .bindPopup(crearPopup(solicitudesGrupo), { maxWidth: 320 })
+      .addTo(mapa);
   });
 
   // CP-MAP-03: aceptar directo desde la tarjeta del mapa. El botón del popup

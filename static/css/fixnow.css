@@ -1038,6 +1038,13 @@ textarea.form-control { min-height: 112px; }
   place-items: center;
 }
 .fx-pin i { transform: rotate(45deg); font-size: .9rem; color: var(--fx-ink); }
+.fx-pin--group span {
+  transform: rotate(45deg);
+  color: var(--fx-ink);
+  font-size: .75rem;
+  font-weight: 800;
+  line-height: 1;
+}
 .fx-pin--yo {
   width: 18px;
   height: 18px;
