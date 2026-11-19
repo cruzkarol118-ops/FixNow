@@ -732,6 +732,9 @@ def cliente_perfil(request):
     se reemplaza tras confirmar con el código mostrado + la contraseña
     actual. Mientras no haya confirmación, el correo actual no cambia.
     """
+    # Repara perfiles antiguos/importados que ya tienen direccion en Usuario,
+    # pero no la fila relacionada que alimenta "Mis direcciones".
+    _sincronizar_principal_de_perfil(request.user)
     pendiente = request.session.get("cambio_correo")
     if request.method == "POST":
         if request.POST.get("confirmar_correo"):

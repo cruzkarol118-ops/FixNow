@@ -481,8 +481,20 @@ class Command(BaseCommand):
         return pagos
 
     def _crear_direcciones(self, clientes):
+        # Todos los perfiles demo que tienen dirección deben verla también en
+        # la sección "Mis direcciones". Dirección del usuario y Direccion son
+        # tablas distintas; la principal mantiene ambas sincronizadas.
+        for cliente in clientes:
+            Direccion.objects.create(
+                cliente=cliente,
+                etiqueta="Casa",
+                direccion=cliente.direccion,
+                latitud=cliente.latitud,
+                longitud=cliente.longitud,
+                es_principal=True,
+            )
+
         c1 = clientes[0]
-        Direccion.objects.create(cliente=c1, etiqueta="Casa", direccion="Cra 13 #52-40, Chapinero, Bogotá", latitud=4.6486, longitud=-74.0628, es_principal=True)
         Direccion.objects.create(cliente=c1, etiqueta="Oficina", direccion="Cl 72 #10-34, Chapinero, Bogotá", latitud=4.6580, longitud=-74.0580)
         c4 = clientes[3]
         Direccion.objects.create(cliente=c4, etiqueta="Oficina", direccion="Cra 19 #93-56, Usaquén, Bogotá", latitud=4.6958, longitud=-74.0305)
