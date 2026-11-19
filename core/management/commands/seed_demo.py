@@ -89,7 +89,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         with transaction.atomic():
-            self._borrar_previos()
+            self.tecnicos_preservados_ids = self._borrar_previos()
             admin = self._crear_admin()
             suspendido = self._crear_suspendido()
             clientes = [self._crear_cliente(*datos) for datos in CLIENTES]
@@ -111,11 +111,55 @@ class Command(BaseCommand):
 
     def _borrar_previos(self):
         demo = Usuario.objects.filter(correo__in=CORREOS_DEMO + CORREOS_LEGACY)
+        demo_ids = list(demo.values_list("pk", flat=True))
+        tecnicos_demo = demo.filter(rol=Usuario.Rol.TECNICO)
+
+        # Las solicitudes de cuentas externas no forman parte del reset demo.
+        # Si siguen abiertas y apuntan a un técnico que se va a recrear, vuelven
+        # al estado anterior a la asignación y quedan disponibles públicamente.
+        solicitudes_a_liberar = Solicitud.objects.exclude(cliente_id__in=demo_ids).filter(
+            tecnico__in=tecnicos_demo,
+            estado__in=[Solicitud.Estado.PENDIENTE, Solicitud.Estado.EN_CURSO],
+        )
+        for solicitud in solicitudes_a_liberar.select_related("cliente"):
+            Notificacion.objects.create(
+                usuario=solicitud.cliente,
+                tipo=Notificacion.Tipo.SOLICITUD_LIBERADA,
+                mensaje=(f"El técnico asignado a tu solicitud #{solicitud.pk} ya no está disponible; "
+                        "la solicitud volvió a pendiente para que otro técnico pueda tomarla."),
+                solicitud=solicitud,
+            )
+        solicitudes_a_liberar.update(
+            estado=Solicitud.Estado.PENDIENTE,
+            tecnico=None,
+            fecha_asignacion=None,
+            visible_tecnicos=True,
+            monto_aceptado=False,
+            monto_final=None,
+            fecha_finalizacion=None,
+            notas_finales="",
+        )
+
+        # Una solicitud cerrada necesita conservar al técnico en su historial:
+        # no se borra esa cuenta demo ni sus datos asociados.
+        tecnicos_preservados_ids = set(
+            Solicitud.objects.exclude(cliente_id__in=demo_ids).filter(
+                tecnico__in=tecnicos_demo,
+                estado__in=[Solicitud.Estado.FINALIZADA, Solicitud.Estado.CANCELADA],
+            ).values_list("tecnico_id", flat=True)
+        )
+        self.tecnicos_preservados_correo = set(
+            Usuario.objects.filter(pk__in=tecnicos_preservados_ids)
+            .values_list("correo", flat=True)
+        )
+        demo_para_recrear = demo.exclude(pk__in=tecnicos_preservados_ids)
+
         Pago.objects.filter(solicitud__cliente__in=demo).delete()
         Solicitud.objects.filter(cliente__in=demo).delete()
-        Notificacion.objects.filter(usuario__in=demo).delete()
-        demo.delete()
+        Notificacion.objects.filter(usuario__in=demo_para_recrear).delete()
+        demo_para_recrear.delete()
         IASugerencia.objects.filter(origen="seed_demo").delete()
+        return tecnicos_preservados_ids
 
     @staticmethod
     def _fecha(objeto, campo, dias):
@@ -150,6 +194,10 @@ class Command(BaseCommand):
         return user
 
     def _crear_tecnico(self, correo, nombre, cedula, especialidad, precio, lat, lng, estado, disponible, dias):
+        if correo in self.tecnicos_preservados_correo:
+            # Su identidad sigue referenciada por historial externo: conservar
+            # cuenta y perfil tal como están, sin alterar sus credenciales.
+            return Usuario.objects.get(correo=correo)
         user = Usuario.objects.create_user(
             correo=correo, password=PASSWORD_DEMO, cedula=cedula,
             nombre_completo=nombre, telefono="3000000000",
@@ -449,6 +497,9 @@ class Command(BaseCommand):
             (tecnicos[22], "Reparacion y mantenimiento de neveras", "electrodomesticos", DocumentoTecnico.Estado.APROBADO),
         ]
         for tecnico, nombre, especialidad, estado in documentos:
+            if DocumentoTecnico.objects.filter(
+                    perfil=tecnico.perfil_tecnico, nombre=nombre).exists():
+                continue
             doc = DocumentoTecnico.objects.create(
                 perfil=tecnico.perfil_tecnico, nombre=nombre, especialidad=especialidad,
                 estado=estado, archivo=ContentFile(
@@ -550,12 +601,16 @@ class Command(BaseCommand):
             (suspendido, Notificacion.Tipo.USUARIO_SUSPENDIDO, "Tu cuenta fue suspendida para la demostración.", None, True, 60),
         ]
         for usuario, tipo, mensaje, solicitud, leida, dias in notificaciones:
+            if usuario.pk in self.tecnicos_preservados_ids:
+                continue
             notificacion = Notificacion.objects.create(
                 usuario=usuario, tipo=tipo, mensaje=mensaje,
                 solicitud=solicitud, leida=leida)
             self._fecha(notificacion, "fecha_creacion", dias)
 
         def avisar(usuario, tipo, mensaje, solicitud, fecha, leida):
+            if usuario.pk in self.tecnicos_preservados_ids:
+                return
             aviso = Notificacion.objects.create(
                 usuario=usuario, tipo=tipo, mensaje=mensaje[:255],
                 solicitud=solicitud, leida=leida)
